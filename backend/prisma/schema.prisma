@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Models
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  // Values: COLLABORATOR | MANAGER | FINANCIAL | ADMIN
+  role         String   @default("COLLABORATOR")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reimbursements Reimbursement[]
+  historyEntries ReimbursementHistory[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reimbursements Reimbursement[]
+
+  @@map("categories")
+}
+
+model Reimbursement {
+  id              String   @id @default(uuid())
+  requesterId     String
+  categoryId      String
+  description     String
+  value           Float
+  expenseDate     DateTime
+  // Values: DRAFT | SUBMITTED | APPROVED | REJECTED | PAID | CANCELLED
+  status          String   @default("DRAFT")
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  requester   User                   @relation(fields: [requesterId], references: [id])
+  category    Category               @relation(fields: [categoryId], references: [id])
+  attachments Attachment[]
+  history     ReimbursementHistory[]
+
+  @@map("reimbursements")
+}
+
+model Attachment {
+  id              String   @id @default(uuid())
+  reimbursementId String
+  fileName        String
+  fileUrl         String
+  // Values: pdf | jpg | jpeg | png
+  fileType        String
+  createdAt       DateTime @default(now())
+
+  reimbursement Reimbursement @relation(fields: [reimbursementId], references: [id])
+
+  @@map("attachments")
+}
+
+model ReimbursementHistory {
+  id              String   @id @default(uuid())
+  reimbursementId String
+  userId          String
+  // Values: CREATED | UPDATED | SUBMITTED | APPROVED | REJECTED | PAID | CANCELED
+  action          String
+  observation     String
+  createdAt       DateTime @default(now())
+
+  reimbursement Reimbursement @relation(fields: [reimbursementId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+
+  @@map("reimbursement_history")
+}

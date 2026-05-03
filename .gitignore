@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Database (SQLite)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Prisma
+# Keep migrations, ignore generated client if desired
+# backend/prisma/migrations/ → committed intentionally
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage & Tests
+coverage/
+.nyc_output/
+
+# Vite
+frontend/.vite/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Uploads (anexos simulados)
+backend/uploads/
+
+# Misc
+.cache/
+tmp/
