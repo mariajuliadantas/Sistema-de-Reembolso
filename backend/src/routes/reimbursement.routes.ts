@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { ReimbursementController } from '../controllers/reimbursement.controller';
-import { authMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
 
 const reimbursementRoutes = Router();
 const reimbursementController = new ReimbursementController();
@@ -9,7 +9,7 @@ reimbursementRoutes.use(authMiddleware);
 
 reimbursementRoutes.get('/', reimbursementController.getAll);
 reimbursementRoutes.get('/:id', reimbursementController.getById);
-reimbursementRoutes.post('/', reimbursementController.create);
+reimbursementRoutes.post('/', roleMiddleware(['COLLABORATOR']), reimbursementController.create);
 reimbursementRoutes.patch('/:id', reimbursementController.update);
 reimbursementRoutes.delete('/:id', reimbursementController.cancel);
 

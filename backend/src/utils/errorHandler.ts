@@ -7,7 +7,12 @@ export function handleHttpError(error: unknown, res: Response) {
   }
 
   if (error instanceof Error) {
-    if (error.message.includes('Acesso negado') || error.message.includes('não autorizado') || error.message.includes('só pode')) {
+    if (
+      error.message.includes('Acesso negado') || 
+      error.message.includes('não autorizado') || 
+      error.message.includes('só pode') ||
+      error.message.toLowerCase().includes('apenas')
+    ) {
       return res.status(403).json({ error: error.message });
     }
 
