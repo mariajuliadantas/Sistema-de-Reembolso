@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
 interface User {
@@ -14,18 +14,18 @@ interface AuthContextData {
   login: (userData: User, userToken: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
-  isLoading: boolean; // Indica se o estado de autenticação está sendo carregado
+  isLoading: boolean;
 }
 
 // O valor padrão é um objeto vazio tipado como AuthContextData.
 // O 'as AuthContextData' é necessário porque o valor inicial não é um AuthContextData completo,
-// mas sabemos que o Provider sempre fornecerá um valor completo.
+// mas o Provider sempre fornecerá um valor completo.
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Começa como true para indicar carregamento
+  const [isLoading, setIsLoading] = useState(true); 
 
   useEffect(() => {
     const loadAuthData = () => {
@@ -34,17 +34,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const storedToken = localStorage.getItem('@App:token');
 
         if (storedUser && storedToken) {
-          // Tenta fazer o parse do usuário. Se falhar, o catch será acionado.
           const parsedUser: User = JSON.parse(storedUser);
           setUser(parsedUser);
           setToken(storedToken);
         }
       } catch (error) {
         console.error('Erro ao carregar dados de autenticação do localStorage:', error);
-        // Se houver qualquer erro (parse inválido, etc.), limpa o estado e o localStorage
-        logout(); // Garante que o estado interno e o localStorage sejam limpos
+        logout();
       } finally {
-        // Garante que o estado de carregamento seja finalizado, independentemente do sucesso ou falha
         setIsLoading(false);
       }
     };
@@ -66,7 +63,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('@App:token');
   };
 
-  // O valor isAuthenticated é derivado de 'user' para garantir consistência
   const isAuthenticated = !!user;
 
   return (
