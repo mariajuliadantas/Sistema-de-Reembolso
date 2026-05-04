@@ -1,17 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import { prisma } from '../utils/prisma';
 
 const router = Router();
-
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL?.replace('file:', '') || './dev.db' });
-const prisma = new PrismaClient({ adapter });
 
 
 const loginSchema = z.object({
@@ -41,6 +34,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const secret = process.env.JWT_SECRET;
+    console.log('JWT_SECRET no login:', secret ? 'Chave secreta carregada' : 'Chave secreta NÃO carregada'); // Log de depuração
     if (!secret) {
       throw new Error('Chave secreta JWT não configurada no .env');
     }
@@ -51,6 +45,8 @@ router.post('/login', async (req: Request, res: Response) => {
       { expiresIn: '1d' }
     );
 
+    console.log('Token gerado:', token); // Log de depuração
+
     return res.status(200).json({
       message: 'Login bem-sucedido',
       token,
@@ -60,7 +56,6 @@ router.post('/login', async (req: Request, res: Response) => {
     console.error('Erro no login:', error);
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
-
 });
 
 export default router;
