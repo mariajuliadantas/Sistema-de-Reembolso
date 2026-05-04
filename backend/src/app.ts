@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import authRoutes from './routes/auth.routes';
+import categoryRoutes from './routes/category.routes';
 import { authMiddleware, roleMiddleware } from './middlewares/auth.middleware';
 
 const app = express();
@@ -15,6 +16,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Rotas protegidas (exemplo)
 app.get('/api/protected', authMiddleware, (req: Request, res: Response) => {
