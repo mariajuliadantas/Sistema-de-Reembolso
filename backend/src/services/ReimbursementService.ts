@@ -108,7 +108,19 @@ export class ReimbursementService {
       });
     } else if (user.role === 'MANAGER') {
       return prisma.reimbursement.findMany({
-        where: { status: 'SUBMITTED' },
+        where: {
+          OR: [
+            { status: 'SUBMITTED' },
+            {
+              history: {
+                some: {
+                  userId: user.id,
+                  action: { in: ['APPROVED', 'REJECTED'] },
+                },
+              },
+            },
+          ],
+        },
         include: {
           category: true,
           requester: { select: { id: true, name: true, email: true } }
@@ -298,13 +310,26 @@ export class ReimbursementService {
       throw new AppError('Anexos só podem ser adicionados a reembolsos em DRAFT ou SUBMITTED', 400);
     }
 
-    return prisma.attachment.create({
-      data: {
-        fileName: data.fileName,
-        fileUrl: data.fileUrl,
-        fileType: data.fileType,
-        reimbursementId: id,
-      },
+    return prisma.$transaction(async (tx) => {
+      const attachment = await tx.attachment.create({
+        data: {
+          fileName: data.fileName,
+          fileUrl: data.fileUrl,
+          fileType: data.fileType,
+          reimbursementId: id,
+        },
+      });
+
+      await tx.reimbursementHistory.create({
+        data: {
+          action: 'UPDATED',
+          reimbursementId: id,
+          userId: user.id,
+          observation: `Attachment added: ${data.fileName}`,
+        },
+      });
+
+      return attachment;
     });
   }
 

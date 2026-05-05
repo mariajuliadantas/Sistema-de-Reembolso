@@ -11,7 +11,7 @@ Aplicacao fullstack para controle de solicitacoes de reembolso com fluxo por per
 
 - `backend`: API REST em Node.js, Express, Prisma e SQLite.
 - `frontend`: interface React com Vite, Chakra UI e React Query.
-- `docker-compose.yml`: orquestracao para ambientes `dev` e `prod`.
+- `docker-compose.yml`: containerização apenas do SQLite.
 
 ## Requisitos
 
@@ -53,31 +53,16 @@ npm run dev
 
 Frontend em `http://localhost:5173`.
 
-## Docker (dev e prod)
+## Docker (somente banco SQLite)
 
-### Perfil de desenvolvimento
-
-```bash
-docker compose --profile dev up --build
-```
-
-Servicos:
-- Frontend dev: `http://localhost:5173`
-- Backend dev: `http://localhost:3000`
-
-### Perfil de producao
+Para manter apenas o banco em container:
 
 ```bash
-docker compose --profile prod up --build
+docker compose up -d
 ```
 
-Servicos:
-- Frontend prod (nginx): `http://localhost:4173`
-- Backend prod: `http://localhost:3000`
-
-### Persistencia do banco
-
-O SQLite fica em volume nomeado (`sqlite_data`) para manter os dados entre reinicios.
+O serviço `sqlite-db` mantém o arquivo `dev.db` em volume nomeado (`sqlite_data`) e também em `./database`.
+Backend e frontend continuam rodando localmente.
 
 ## Qualidade
 

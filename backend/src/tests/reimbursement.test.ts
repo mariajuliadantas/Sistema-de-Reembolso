@@ -282,6 +282,26 @@ describe('Fluxo de Reembolso', () => {
     });
   });
 
+  describe('Histórico no banco para gestor', () => {
+    it('deve permitir que gestor veja solicitações já tratadas por ele', async () => {
+      const reimbursementId = await createDraft();
+      await request(app)
+        .post(`/api/reimbursements/${reimbursementId}/submit`)
+        .set('Authorization', `Bearer ${collaboratorToken}`);
+      await request(app)
+        .post(`/api/reimbursements/${reimbursementId}/approve`)
+        .set('Authorization', `Bearer ${managerToken}`);
+
+      const managerList = await request(app)
+        .get('/api/reimbursements')
+        .set('Authorization', `Bearer ${managerToken}`);
+
+      expect(managerList.status).toBe(200);
+      const hasHandledRequest = managerList.body.some((item: { id: string }) => item.id === reimbursementId);
+      expect(hasHandledRequest).toBe(true);
+    });
+  });
+
   describe('Categorias', () => {
     it('deve impedir colaborador de criar categoria', async () => {
       const response = await request(app)
@@ -379,6 +399,32 @@ describe('Fluxo de Reembolso', () => {
       expect(actions).toContain('SUBMITTED');
       expect(actions).toContain('APPROVED');
       expect(actions).toContain('PAID');
+    });
+
+    it('deve registrar histórico ao adicionar anexo', async () => {
+      const reimbursementId = await createDraft();
+
+      const addAttachmentRes = await request(app)
+        .post(`/api/reimbursements/${reimbursementId}/attachments`)
+        .set('Authorization', `Bearer ${collaboratorToken}`)
+        .send({
+          fileName: 'nota-fiscal.pdf',
+          fileUrl: 'https://example.com/nota-fiscal.pdf',
+          fileType: 'pdf',
+        });
+
+      expect(addAttachmentRes.status).toBe(201);
+
+      const historyResponse = await request(app)
+        .get(`/api/reimbursements/${reimbursementId}/history`)
+        .set('Authorization', `Bearer ${collaboratorToken}`);
+
+      expect(historyResponse.status).toBe(200);
+      const hasAttachmentHistory = historyResponse.body.some(
+        (entry: { observation?: string }) =>
+          (entry.observation || '').includes('Attachment added: nota-fiscal.pdf'),
+      );
+      expect(hasAttachmentHistory).toBe(true);
     });
   });
 });

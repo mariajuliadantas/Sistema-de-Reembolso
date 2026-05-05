@@ -1,67 +1,11 @@
 services:
-  backend-dev:
-    build:
-      context: ./backend
-    profiles: ['dev']
-    container_name: reimbursement-backend-dev
-    environment:
-      DATABASE_URL: file:/data/dev.db
-      JWT_SECRET: dev-jwt-secret-change-me
-      PORT: 3000
-      NODE_ENV: development
-    ports:
-      - '3000:3000'
-    volumes:
-      - ./backend:/app
-      - backend_node_modules:/app/node_modules
-      - sqlite_data:/data
-    command: sh -c "npm install && npm run db:migrate && npm run dev"
-
-  frontend-dev:
-    build:
-      context: ./frontend
-      target: dev
-    profiles: ['dev']
-    container_name: reimbursement-frontend-dev
-    environment:
-      VITE_API_URL: http://localhost:3000/api
-    ports:
-      - '5173:5173'
-    depends_on:
-      - backend-dev
-    volumes:
-      - ./frontend:/app
-      - frontend_node_modules:/app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 5173
-
-  backend:
-    build:
-      context: ./backend
-    profiles: ['prod']
-    container_name: reimbursement-backend
-    environment:
-      DATABASE_URL: file:/data/dev.db
-      JWT_SECRET: prod-jwt-secret-change-me
-      PORT: 3000
-      NODE_ENV: production
-    ports:
-      - '3000:3000'
+  sqlite-db:
+    image: keinos/sqlite3:latest
+    container_name: reimbursement-sqlite-db
+    command: sh -c "mkdir -p /data && touch /data/dev.db && tail -f /dev/null"
     volumes:
       - sqlite_data:/data
-    command: sh -c "npm run db:migrate && npm run start"
-
-  frontend:
-    build:
-      context: ./frontend
-      target: prod
-    profiles: ['prod']
-    container_name: reimbursement-frontend
-    depends_on:
-      - backend
-    ports:
-      - '4173:80'
+      - ./database:/workspace-db
 
 volumes:
   sqlite_data:
-  backend_node_modules:
-  frontend_node_modules:
