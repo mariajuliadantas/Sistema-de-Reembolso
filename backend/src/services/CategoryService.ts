@@ -1,4 +1,5 @@
 import { prisma } from '../utils/prisma';
+import { AppError } from '../utils/AppError';
 
 export class CategoryService {
   async getAll() {
@@ -20,7 +21,7 @@ export class CategoryService {
     });
 
     if (existingCategory) {
-      throw new Error('Já existe uma categoria com este nome.');
+      throw new AppError('Já existe uma categoria com este nome.', 409);
     }
 
     return prisma.category.create({
@@ -34,7 +35,7 @@ export class CategoryService {
   async update(id: string, data: { name?: string; active?: boolean }) {
     const category = await prisma.category.findUnique({ where: { id } });
     if (!category) {
-      throw new Error('Category not found');
+      throw new AppError('Categoria não encontrada', 404);
     }
 
     if (data.name && data.name !== category.name) {
@@ -42,7 +43,7 @@ export class CategoryService {
         where: { name: data.name }
       });
       if (existing) {
-        throw new Error('Já existe outra categoria com este nome.');
+        throw new AppError('Já existe outra categoria com este nome.', 409);
       }
     }
 

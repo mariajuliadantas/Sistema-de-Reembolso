@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { AxiosError } from 'axios';
 import { 
   Box, 
   Button, 
@@ -13,6 +14,10 @@ import {
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+
+interface ApiErrorResponse {
+  error?: string;
+}
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -34,9 +39,10 @@ const LoginPage = () => {
 
       login(user, token);
       navigate('/');
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as AxiosError<ApiErrorResponse>;
       console.error(err);
-      setError(err.response?.data?.error || 'Ocorreu um erro ao tentar fazer login.');
+      setError(error.response?.data?.error || 'Ocorreu um erro ao tentar fazer login.');
     } finally {
       setIsLoading(false);
     }

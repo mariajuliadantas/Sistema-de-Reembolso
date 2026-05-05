@@ -5,6 +5,18 @@ import App from './App.tsx'; // Note o .tsx
 import './index.css'; // Mantenha o CSS global do Vite
 import { ChakraProvider, createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
 import { AuthProvider } from './contexts/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 // No Chakra UI v3, as customizações são feitas através de tokens dentro do defineConfig
 const config = defineConfig({
@@ -32,10 +44,13 @@ const system = createSystem(defaultConfig, config);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ChakraProvider value={system}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </ChakraProvider>
+    <QueryClientProvider client={queryClient}>
+      <ChakraProvider value={system}>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ChakraProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   </React.StrictMode>,
 );

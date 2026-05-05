@@ -2,6 +2,7 @@ import { prisma } from '../utils/prisma';
 import dayjs from 'dayjs';
 import { z } from 'zod';
 import { createReimbursementSchema, updateReimbursementSchema, createAttachmentSchema } from '../schemas/reimbursementSchema';
+import { AppError } from '../utils/AppError';
 
 export class ReimbursementService {
   async create(requesterId: string, data: z.infer<typeof createReimbursementSchema>) {
@@ -10,12 +11,12 @@ export class ReimbursementService {
     });
 
     if (!category || !category.active) {
-      throw new Error('Categoria inválida ou inativa');
+      throw new AppError('Categoria inválida ou inativa', 400);
     }
 
     const expenseDate = dayjs(data.expenseDate);
     if (expenseDate.isAfter(dayjs())) {
-      throw new Error('A data da despesa não pode ser no futuro');
+      throw new AppError('A data da despesa não pode ser no futuro', 400);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -45,17 +46,17 @@ export class ReimbursementService {
 
   async update(id: string, data: z.infer<typeof updateReimbursementSchema>, user: { id: string; role: string }) {
     if (user.role !== 'COLLABORATOR') {
-      throw new Error('Apenas COLLABORATOR pode atualizar reembolsos');
+      throw new AppError('Acesso negado: apenas COLLABORATOR pode atualizar reembolsos', 403);
     }
 
     const reimbursement = await this.findById(id, user);
 
     if (reimbursement.requesterId !== user.id) {
-      throw new Error('Você só pode editar os seus próprios reembolsos');
+      throw new AppError('Acesso negado: você só pode editar os seus próprios reembolsos', 403);
     }
 
     if (reimbursement.status !== 'DRAFT') {
-      throw new Error('Apenas reembolsos em DRAFT podem ser editados');
+      throw new AppError('Apenas reembolsos em DRAFT podem ser editados', 400);
     }
 
     if (data.categoryId) {
@@ -63,14 +64,14 @@ export class ReimbursementService {
         where: { id: data.categoryId },
       });
       if (!category || !category.active) {
-        throw new Error('Categoria inválida ou inativa');
+        throw new AppError('Categoria inválida ou inativa', 400);
       }
     }
 
     if (data.expenseDate) {
       const expenseDate = dayjs(data.expenseDate);
       if (expenseDate.isAfter(dayjs())) {
-        throw new Error('A data da despesa não pode ser no futuro');
+        throw new AppError('A data da despesa não pode ser no futuro', 400);
       }
     }
 
@@ -152,11 +153,11 @@ export class ReimbursementService {
     });
 
     if (!reimbursement) {
-      throw new Error('Reimbursement not found');
+      throw new AppError('Reembolso não encontrado', 404);
     }
 
     if (user.role === 'COLLABORATOR' && reimbursement.requesterId !== user.id) {
-      throw new Error('Acesso negado para este reembolso');
+      throw new AppError('Acesso negado para este reembolso', 403);
     }
 
     return reimbursement;
@@ -164,17 +165,17 @@ export class ReimbursementService {
 
   async submit(id: string, user: { id: string; role: string }) {
     if (user.role !== 'COLLABORATOR') {
-      throw new Error('Apenas COLLABORATOR pode enviar reembolsos para aprovação');
+      throw new AppError('Acesso negado: apenas COLLABORATOR pode enviar reembolsos para aprovação', 403);
     }
 
     const reimbursement = await this.findById(id, user);
 
     if (reimbursement.requesterId !== user.id) {
-      throw new Error('Acesso negado');
+      throw new AppError('Acesso negado', 403);
     }
 
     if (reimbursement.status !== 'DRAFT') {
-      throw new Error('Apenas reembolsos em DRAFT podem ser submetidos');
+      throw new AppError('Apenas reembolsos em DRAFT podem ser submetidos', 400);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -191,12 +192,12 @@ export class ReimbursementService {
 
   async approve(id: string, user: { id: string; role: string }) {
     if (user.role !== 'MANAGER') {
-      throw new Error('Apenas MANAGER pode aprovar reembolsos');
+      throw new AppError('Acesso negado: apenas MANAGER pode aprovar reembolsos', 403);
     }
     const reimbursement = await this.findById(id, user);
     
     if (reimbursement.status !== 'SUBMITTED') {
-      throw new Error('Apenas reembolsos em SUBMITTED podem ser aprovados');
+      throw new AppError('Apenas reembolsos em SUBMITTED podem ser aprovados', 400);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -213,13 +214,13 @@ export class ReimbursementService {
 
   async reject(id: string, reason: string, user: { id: string; role: string }) {
     if (user.role !== 'MANAGER') {
-      throw new Error('Apenas MANAGER pode rejeitar reembolsos');
+      throw new AppError('Acesso negado: apenas MANAGER pode rejeitar reembolsos', 403);
     }
 
     const reimbursement = await this.findById(id, user);
 
     if (reimbursement.status !== 'SUBMITTED') {
-      throw new Error('Apenas reembolsos em SUBMITTED podem ser rejeitados');
+      throw new AppError('Apenas reembolsos em SUBMITTED podem ser rejeitados', 400);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -241,12 +242,12 @@ export class ReimbursementService {
 
   async pay(id: string, user: { id: string; role: string }) {
     if (user.role !== 'FINANCIAL') {
-      throw new Error('Apenas FINANCIAL pode pagar reembolsos');
+      throw new AppError('Acesso negado: apenas FINANCIAL pode pagar reembolsos', 403);
     }
     const reimbursement = await this.findById(id, user);
     
     if (reimbursement.status !== 'APPROVED') {
-      throw new Error('Apenas reembolsos APPROVED podem ser pagos');
+      throw new AppError('Apenas reembolsos APPROVED podem ser pagos', 400);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -263,15 +264,15 @@ export class ReimbursementService {
 
   async cancel(id: string, user: { id: string; role: string }) {
     if (user.role !== 'COLLABORATOR') {
-      throw new Error('Apenas COLLABORATOR pode cancelar reembolsos');
+      throw new AppError('Acesso negado: apenas COLLABORATOR pode cancelar reembolsos', 403);
     }
     const reimbursement = await this.findById(id, user);
 
     if (reimbursement.requesterId !== user.id) {
-      throw new Error('Você só pode cancelar seus próprios reembolsos');
+      throw new AppError('Acesso negado: você só pode cancelar seus próprios reembolsos', 403);
     }
-    if (reimbursement.status !== 'DRAFT' && reimbursement.status !== 'SUBMITTED') {
-      throw new Error('Apenas reembolsos DRAFT ou SUBMITTED podem ser cancelados');
+    if (reimbursement.status !== 'DRAFT') {
+      throw new AppError('Apenas reembolsos em DRAFT podem ser cancelados', 400);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -290,11 +291,11 @@ export class ReimbursementService {
     const reimbursement = await this.findById(id, user);
 
     if (reimbursement.requesterId !== user.id) {
-      throw new Error('Acesso negado');
+      throw new AppError('Acesso negado', 403);
     }
 
     if (reimbursement.status !== 'DRAFT' && reimbursement.status !== 'SUBMITTED') {
-      throw new Error('Anexos só podem ser adicionados a reembolsos em DRAFT ou SUBMITTED');
+      throw new AppError('Anexos só podem ser adicionados a reembolsos em DRAFT ou SUBMITTED', 400);
     }
 
     return prisma.attachment.create({

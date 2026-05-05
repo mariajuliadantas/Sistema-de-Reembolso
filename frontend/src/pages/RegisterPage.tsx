@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { AxiosError } from 'axios';
 import { 
   Box, 
   Button, 
@@ -12,6 +13,10 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import api from '../services/api';
+
+interface ApiErrorResponse {
+  error?: string;
+}
 
 const RegisterPage = () => {
   const [name, setName] = useState('');
@@ -38,8 +43,9 @@ const RegisterPage = () => {
       await api.post('/auth/register', { name, email, password });
 
       navigate('/login');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Ocorreu um erro ao criar sua conta.');
+    } catch (err) {
+      const error = err as AxiosError<ApiErrorResponse>;
+      setError(error.response?.data?.error || 'Ocorreu um erro ao criar sua conta.');
     } finally {
       setIsLoading(false);
     }

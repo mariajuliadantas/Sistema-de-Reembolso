@@ -4,7 +4,9 @@ import { resolve } from 'path';
 import { prisma } from '../utils/prisma';
 import bcrypt from 'bcryptjs';
 
-require('dotenv').config({ path: resolve(__dirname, '../../.env.test') });
+process.env.NODE_ENV = 'test';
+require('dotenv').config({ path: resolve(__dirname, '../../.env.test'), override: true });
+jest.setTimeout(30000);
 
 async function cleanDatabase() {
   await prisma.attachment.deleteMany();
@@ -72,10 +74,14 @@ async function seedDatabase() {
 }
 
 beforeAll(async () => {
-  process.env.NODE_ENV = 'test';
-
   try {
-    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    execSync('npx prisma migrate deploy', {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL || 'file:./test.db',
+      },
+    });
   } catch (error) {
     console.error('Failed to apply Prisma migrations:', error);
     process.exit(1);

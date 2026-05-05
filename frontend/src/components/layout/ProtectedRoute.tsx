@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { Center, Spinner } from '@chakra-ui/react';
 
 interface ProtectedRouteProps {
@@ -25,8 +25,8 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    // Se o usuário não tiver permissão para esta rota específica 
-    return <Navigate to="/" replace />;
+    // Redirect to Forbidden page if role is not allowed
+    return <Navigate to="/403" replace />;
   }
 
   return children;

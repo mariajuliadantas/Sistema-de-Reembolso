@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
@@ -27,6 +28,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true); 
 
+  const clearSession = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('@App:user');
+    localStorage.removeItem('@App:token');
+  };
+
   useEffect(() => {
     const loadAuthData = () => {
       try {
@@ -40,7 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.error('Erro ao carregar dados de autenticação do localStorage:', error);
-        logout();
+        clearSession();
       } finally {
         setIsLoading(false);
       }
@@ -56,12 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('@App:token', userToken);
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('@App:user');
-    localStorage.removeItem('@App:token');
-  };
+  const logout = () => clearSession();
 
   const isAuthenticated = !!user;
 
