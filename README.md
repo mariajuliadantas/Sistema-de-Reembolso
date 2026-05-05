@@ -85,21 +85,39 @@ npm test
 
 ## Endpoints principais
 
-- `POST /api/auth/register`
+- `POST /api/users` (cadastro publico: cria `COLLABORATOR`; nao aceita `role` no body; com token `ADMIN`, permite definir `role`)
+- `GET /api/users` (ADMIN)
+- `GET /api/users/:id` (ADMIN)
+- `PUT /api/users/:id` (ADMIN)
+- `DELETE /api/users/:id` (ADMIN)
+- `POST /api/auth/register` (compatibilidade; mesmo fluxo de cadastro colaborador)
 - `POST /api/auth/login`
 - `GET /api/categories/active`
 - `GET /api/categories` (ADMIN)
 - `POST /api/categories` (ADMIN)
-- `PATCH /api/categories/:id` (ADMIN)
+- `PUT /api/categories/:id` (ADMIN) (`PATCH` ainda aceito)
 - `GET /api/reimbursements`
 - `POST /api/reimbursements`
-- `PATCH /api/reimbursements/:id`
+- `PUT /api/reimbursements/:id` (`PATCH` ainda aceito)
 - `POST /api/reimbursements/:id/submit`
 - `POST /api/reimbursements/:id/approve`
 - `POST /api/reimbursements/:id/reject`
 - `POST /api/reimbursements/:id/pay`
 - `POST /api/reimbursements/:id/cancel`
+- `GET /api/reimbursements/:id/attachments`
+- `POST /api/reimbursements/:id/attachments` (multipart `file`; PDF/JPG/PNG ate 5MB; tambem aceita JSON legado com `fileName`, `fileUrl`, `fileType`)
 - `GET /api/reimbursements/:id/history`
+
+## Formato de erro (API)
+
+Respostas de erro seguem o padrao:
+
+`{ "message": string, "statusCode": number, "error": string }`
+
+## Uploads
+
+- Arquivos ficam em `backend/uploads` e sao servidos em `GET /uploads/*`.
+- Para URLs publicas corretas nos anexos, defina `PUBLIC_API_URL` no `.env` do backend (ex.: `http://localhost:3000`, **sem** `/api`).
 
 ## Troubleshooting
 

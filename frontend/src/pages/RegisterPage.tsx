@@ -15,7 +15,7 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import api from '../services/api';
 
 interface ApiErrorResponse {
-  error?: string;
+  message?: string;
 }
 
 const RegisterPage = () => {
@@ -40,12 +40,12 @@ const RegisterPage = () => {
     setIsLoading(true);
 
     try {
-      await api.post('/auth/register', { name, email, password });
+      await api.post('/users', { name, email, password });
 
       navigate('/login');
     } catch (err) {
       const error = err as AxiosError<ApiErrorResponse>;
-      setError(error.response?.data?.error || 'Ocorreu um erro ao criar sua conta.');
+      setError(error.response?.data?.message || 'Ocorreu um erro ao criar sua conta.');
     } finally {
       setIsLoading(false);
     }

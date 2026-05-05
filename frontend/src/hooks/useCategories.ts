@@ -30,8 +30,10 @@ export const useCreateCategory = () => {
       const { data } = await api.post('/categories', payload);
       return data as Category;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'categories',
+      });
     },
   });
 };
@@ -41,11 +43,13 @@ export const useUpdateCategory = () => {
 
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: { name?: string; active?: boolean } }) => {
-      const { data } = await api.patch(`/categories/${id}`, payload);
+      const { data } = await api.put(`/categories/${id}`, payload);
       return data as Category;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'categories',
+      });
     },
   });
 };

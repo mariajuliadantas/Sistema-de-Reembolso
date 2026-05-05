@@ -3,12 +3,36 @@ import { ReimbursementService } from '../services/ReimbursementService';
 import { createReimbursementSchema, updateReimbursementSchema, createAttachmentSchema } from '../schemas/reimbursementSchema';
 import { handleHttpError } from '../utils/errorHandler';
 import { z } from 'zod';
+import { AppError } from '../utils/AppError';
 
 const reimbursementService = new ReimbursementService();
 
 const rejectSchema = z.object({
   reason: z.string().min(5, 'O motivo da rejeição deve ter pelo menos 5 caracteres'),
 });
+
+const getPublicBaseUrl = (req: Request) => {
+  const fromEnv = process.env.PUBLIC_API_URL?.replace(/\/$/, '');
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  const host = req.get('host');
+  if (!host) {
+    return 'http://localhost:3000';
+  }
+
+  const forwardedProto = req.get('x-forwarded-proto');
+  const protocol = forwardedProto?.split(',')[0]?.trim() || req.protocol;
+  return `${protocol}://${host}`;
+};
+
+const inferFileType = (mimetype: string) => {
+  if (mimetype === 'application/pdf') return 'pdf' as const;
+  if (mimetype === 'image/jpeg') return 'jpeg' as const;
+  if (mimetype === 'image/png') return 'png' as const;
+  return null;
+};
 
 export class ReimbursementController {
   async getAll(req: Request, res: Response) {
@@ -107,7 +131,34 @@ export class ReimbursementController {
   async addAttachment(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const validatedData = createAttachmentSchema.parse(req.body);
+      const file = req.file;
+
+      let validatedData: z.infer<typeof createAttachmentSchema>;
+
+      if (file) {
+        const fileType = inferFileType(file.mimetype);
+        if (!fileType) {
+          throw new AppError('Tipo de arquivo inválido. Use PDF, JPG ou PNG.', 400);
+        }
+
+        validatedData = createAttachmentSchema.parse({
+          fileName: file.originalname || file.filename,
+          fileUrl: `${getPublicBaseUrl(req)}/uploads/${file.filename}`,
+          fileType,
+        });
+      } else {
+        const hasJsonPayload =
+          req.body &&
+          typeof req.body === 'object' &&
+          ('fileName' in req.body || 'fileUrl' in req.body || 'fileType' in req.body);
+
+        if (!hasJsonPayload) {
+          throw new AppError('Arquivo é obrigatório (campo multipart "file")', 400);
+        }
+
+        validatedData = createAttachmentSchema.parse(req.body);
+      }
+
       const attachment = await reimbursementService.addAttachment(String(id), validatedData, req.user!);
       res.status(201).json(attachment);
     } catch (error) {

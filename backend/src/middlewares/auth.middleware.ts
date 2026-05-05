@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { sendError } from '../utils/httpResponse';
 
 dotenv.config();
 
@@ -10,12 +11,38 @@ interface JwtPayload {
   role: string;
 }
 
+// Popula req.user quando houver Bearer válido; não responde erro se ausente/inválido
+export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+
+    const token = authHeader.split(' ')[1];
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return next();
+    }
+
+    const decoded = jwt.verify(token, secret) as JwtPayload;
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+    };
+    next();
+  } catch {
+    next();
+  }
+};
+
 // Middleware de autenticação
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token de autenticação não fornecido ou inválido' });
+      return sendError(res, 401, 'Token de autenticação não fornecido ou inválido');
     }
 
     const token = authHeader.split(' ')[1];
@@ -35,7 +62,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     next();
   } catch (error) {
     console.error('Erro na verificação do token:', error);
-    return res.status(401).json({ error: 'Token inválido ou expirado' });
+    return sendError(res, 401, 'Token inválido ou expirado');
   }
 };
 
@@ -43,7 +70,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
 export const roleMiddleware = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Acesso negado: perfil não autorizado' });
+      return sendError(res, 403, 'Acesso negado: perfil não autorizado');
     }
     next();
   };

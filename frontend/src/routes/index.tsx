@@ -6,6 +6,7 @@ import CreateReimbursement from '../pages/CreateReimbursement';
 import EditReimbursement from '../pages/EditReimbursement';
 import ReimbursementDetails from '../pages/ReimbursementDetails';
 import CategoriesManagement from '../pages/CategoriesManagement';
+import UsersManagement from '../pages/UsersManagement';
 import NotFoundPage from '../pages/NotFoundPage';
 import Forbidden from '../pages/Forbidden';
 import ProtectedRoute from '../components/layout/ProtectedRoute';
@@ -74,6 +75,17 @@ const AppRoutes = () => {
             </AppShell>
           </ProtectedRoute>
         } 
+      />
+
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <AppShell>
+              <UsersManagement />
+            </AppShell>
+          </ProtectedRoute>
+        }
       />
       
       {/* Fallback */}

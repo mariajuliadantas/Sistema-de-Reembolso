@@ -24,7 +24,8 @@ describe('Endpoints de Autenticação', () => {
       });
 
     expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Credenciais inválidas');
+    expect(response.body.message).toBe('Credenciais inválidas');
+    expect(response.body.error).toBe('Unauthorized');
   });
 
   it('deve falhar com usuário inexistente', async () => {
@@ -36,7 +37,8 @@ describe('Endpoints de Autenticação', () => {
       });
 
     expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Credenciais inválidas');
+    expect(response.body.message).toBe('Credenciais inválidas');
+    expect(response.body.error).toBe('Unauthorized');
   });
 
   it('deve falhar com formato de e-mail inválido', async () => {
@@ -48,6 +50,7 @@ describe('Endpoints de Autenticação', () => {
       });
 
     expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('errors');
+    expect(response.body.message).toBe('Email inválido');
+    expect(response.body.error).toBe('Bad Request');
   });
 });

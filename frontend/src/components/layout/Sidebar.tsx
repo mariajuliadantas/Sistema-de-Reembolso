@@ -5,6 +5,7 @@ import {
   PlusCircle, 
   History,
   Tags,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -59,6 +60,7 @@ const Sidebar = () => {
               Administração
             </Text>
             <SidebarItem icon={Tags} label="Categorias" to="/categories" />
+            <SidebarItem icon={Users} label="Usuários" to="/users" />
           </>
         )}
 

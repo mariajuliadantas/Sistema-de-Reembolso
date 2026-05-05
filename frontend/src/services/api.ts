@@ -1,7 +1,23 @@
 import axios from 'axios';
 
+/**
+ * Garante que todas as chamadas usem o prefixo `/api` do backend.
+ * Evita 404 silencioso quando `VITE_API_URL` vem como `http://localhost:3000` (sem `/api`).
+ */
+const normalizeApiBaseUrl = (raw: string | undefined): string => {
+  const fallback = 'http://localhost:3000/api';
+  if (!raw || !raw.trim()) {
+    return fallback;
+  }
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  if (trimmed.endsWith('/api')) {
+    return trimmed;
+  }
+  return `${trimmed}/api`;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
+  baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL as string | undefined),
 });
 
 // Interceptor para injetar o token JWT em todas as requisições

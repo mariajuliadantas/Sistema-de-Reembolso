@@ -4,6 +4,7 @@ import type {
   Reimbursement,
   CreateReimbursementDTO,
   UpdateReimbursementDTO,
+  ReimbursementAttachment,
 } from '../types/reimbursement';
 
 export const useReimbursements = () => {
@@ -46,7 +47,7 @@ export const useUpdateReimbursement = () => {
 
   return useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: UpdateReimbursementDTO }) => {
-      const { data } = await api.patch(`/reimbursements/${id}`, payload);
+      const { data } = await api.put(`/reimbursements/${id}`, payload);
       return data;
     },
     onSuccess: (_, variables) => {
@@ -127,6 +128,34 @@ export const useCancelReimbursement = () => {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', id] });
+    },
+  });
+};
+
+export const useReimbursementAttachments = (id: string) => {
+  return useQuery({
+    queryKey: ['reimbursement', id, 'attachments'],
+    queryFn: async (): Promise<ReimbursementAttachment[]> => {
+      const { data } = await api.get(`/reimbursements/${id}/attachments`);
+      return data;
+    },
+    enabled: !!id,
+  });
+};
+
+export const useAddReimbursementAttachment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post(`/reimbursements/${id}/attachments`, formData);
+      return data as ReimbursementAttachment;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['reimbursement', variables.id, 'attachments'] });
+      queryClient.invalidateQueries({ queryKey: ['reimbursement', variables.id] });
     },
   });
 };

@@ -1,7 +1,12 @@
 import { Box, Heading, Text, Button, Table, Skeleton, Stack, Flex, VStack, Center, Input, HStack, Switch } from '@chakra-ui/react';
 import { useState } from 'react';
+import type { AxiosError } from 'axios';
 import { useCategories, useCreateCategory, useUpdateCategory } from '../hooks/useCategories';
 import { Plus } from 'lucide-react';
+
+interface ApiErrorBody {
+  message?: string;
+}
 
 const CategoriesManagement = () => {
   const { data: categories, isLoading, isError } = useCategories({ includeInactive: true });
@@ -36,6 +41,7 @@ const CategoriesManagement = () => {
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
+      setActionError('Informe um nome para a categoria.');
       return;
     }
 
@@ -43,8 +49,12 @@ const CategoriesManagement = () => {
     try {
       await createCategoryMutation.mutateAsync({ name: newCategoryName.trim(), active: true });
       setNewCategoryName('');
-    } catch {
-      setActionError('Não foi possível salvar a categoria. Verifique se o nome já existe.');
+    } catch (err) {
+      const ax = err as AxiosError<ApiErrorBody>;
+      setActionError(
+        ax.response?.data?.message ||
+          'Não foi possível salvar a categoria. Verifique sua conexão, permissões de ADMIN ou se o nome já existe.',
+      );
     }
   };
 
@@ -52,8 +62,9 @@ const CategoriesManagement = () => {
     setActionError('');
     try {
       await updateCategoryMutation.mutateAsync({ id, payload: { active: !active } });
-    } catch {
-      setActionError('Não foi possível atualizar a categoria.');
+    } catch (err) {
+      const ax = err as AxiosError<ApiErrorBody>;
+      setActionError(ax.response?.data?.message || 'Não foi possível atualizar a categoria.');
     }
   };
 
@@ -73,7 +84,13 @@ const CategoriesManagement = () => {
           onChange={(event) => setNewCategoryName(event.target.value)}
           bg="white"
         />
-        <Button colorPalette="brand" gap={2} loading={createCategoryMutation.isPending} onClick={handleCreateCategory}>
+        <Button
+          type="button"
+          colorPalette="brand"
+          gap={2}
+          loading={createCategoryMutation.isPending}
+          onClick={handleCreateCategory}
+        >
           <Plus size={18} />
           Nova Categoria
         </Button>

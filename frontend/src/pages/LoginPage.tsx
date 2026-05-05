@@ -16,7 +16,7 @@ import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 
 interface ApiErrorResponse {
-  error?: string;
+  message?: string;
 }
 
 const LoginPage = () => {
@@ -42,7 +42,7 @@ const LoginPage = () => {
     } catch (err) {
       const error = err as AxiosError<ApiErrorResponse>;
       console.error(err);
-      setError(error.response?.data?.error || 'Ocorreu um erro ao tentar fazer login.');
+      setError(error.response?.data?.message || 'Ocorreu um erro ao tentar fazer login.');
     } finally {
       setIsLoading(false);
     }

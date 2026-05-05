@@ -1,1 +1,4 @@
-import '@testing-library/jest-dom/vitest';
+import '@testing-library/jest-dom';
+import { TextEncoder, TextDecoder } from 'node:util';
+
+Object.assign(globalThis, { TextEncoder, TextDecoder });

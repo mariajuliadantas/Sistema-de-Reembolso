@@ -107,7 +107,8 @@ describe('Fluxo de Reembolso', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Categoria inválida ou inativa');
+      expect(response.body.message).toBe('Categoria inválida ou inativa');
+      expect(response.body.error).toBe('Bad Request');
     });
 
     it('deve falhar sem autenticação', async () => {

@@ -1,20 +1,21 @@
 import { Response } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from './AppError';
+import { sendError } from './httpResponse';
 
 export function handleHttpError(error: unknown, res: Response) {
   if (error instanceof ZodError) {
-    return res.status(400).json({ errors: error.issues });
+    return sendError(res, 400, error.issues[0]?.message || 'Dados inválidos');
   }
 
   if (error instanceof AppError) {
-    return res.status(error.statusCode).json({ error: error.message });
+    return sendError(res, error.statusCode, error.message);
   }
 
   if (error instanceof Error) {
-    return res.status(400).json({ error: error.message });
+    return sendError(res, 400, error.message);
   }
 
   console.error('Unhandled error type:', error);
-  return res.status(500).json({ error: 'Erro interno do servidor' });
+  return sendError(res, 500, 'Erro interno do servidor');
 }

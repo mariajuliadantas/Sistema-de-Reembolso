@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
 import ProtectedRoute from './ProtectedRoute';
 import { AuthContext } from '../../contexts/AuthContext';
 
@@ -12,8 +11,8 @@ const renderWithAuth = (isAuthenticated: boolean) => {
           ? { id: '1', name: 'User', email: 'user@test.com', role: 'COLLABORATOR' }
           : null,
         token: isAuthenticated ? 'token' : null,
-        login: vi.fn(),
-        logout: vi.fn(),
+        login: jest.fn(),
+        logout: jest.fn(),
         isAuthenticated,
         isLoading: false,
       }}

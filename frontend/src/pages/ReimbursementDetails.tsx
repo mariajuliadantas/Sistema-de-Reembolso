@@ -1,4 +1,6 @@
-import { Box, Heading, Text, Button, Flex, Grid, GridItem, VStack, HStack, Icon, Separator, Skeleton, Center } from '@chakra-ui/react';
+import { Box, Heading, Text, Button, Flex, Grid, GridItem, VStack, HStack, Icon, Separator, Skeleton, Center, Input } from '@chakra-ui/react';
+import { useRef, useState } from 'react';
+import type { AxiosError } from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   useReimbursement,
@@ -7,6 +9,8 @@ import {
   useRejectReimbursement,
   usePayReimbursement,
   useCancelReimbursement,
+  useReimbursementAttachments,
+  useAddReimbursementAttachment,
 } from '../hooks/useReimbursements';
 import { useAuth } from '../hooks/useAuth';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -14,6 +18,10 @@ import { ArrowLeft, Calendar, Tag, DollarSign, FileText, CheckCircle } from 'luc
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '../lib/reimbursement';
+
+interface ApiErrorBody {
+  message?: string;
+}
 
 const ReimbursementDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +33,10 @@ const ReimbursementDetails = () => {
   const rejectMutation = useRejectReimbursement();
   const payMutation = usePayReimbursement();
   const cancelMutation = useCancelReimbursement();
+  const { data: attachments = [] } = useReimbursementAttachments(id!);
+  const addAttachmentMutation = useAddReimbursementAttachment();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [attachmentError, setAttachmentError] = useState('');
 
   const canEdit =
     user?.role === 'COLLABORATOR' &&
@@ -37,6 +49,35 @@ const ReimbursementDetails = () => {
     reimbursement?.status === 'DRAFT';
   const canApprove = user?.role === 'MANAGER' && reimbursement?.status === 'SUBMITTED';
   const canPay = user?.role === 'FINANCIAL' && reimbursement?.status === 'APPROVED';
+  const canManageAttachments = user?.role === 'COLLABORATOR' && reimbursement?.requesterId === user.id;
+
+  const handleAddAttachment = async () => {
+    setAttachmentError('');
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) {
+      setAttachmentError('Selecione um arquivo (PDF, JPG ou PNG).');
+      return;
+    }
+
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setAttachmentError('Arquivo muito grande (máximo 5MB).');
+      return;
+    }
+
+    try {
+      await addAttachmentMutation.mutateAsync({
+        id: id!,
+        file,
+      });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (err) {
+      const ax = err as AxiosError<ApiErrorBody>;
+      setAttachmentError(ax.response?.data?.message || 'Não foi possível adicionar o anexo.');
+    }
+  };
 
   const handleReject = async () => {
     const reason = window.prompt('Informe o motivo da rejeição (mínimo 5 caracteres):');
@@ -131,6 +172,45 @@ const ReimbursementDetails = () => {
                 <Text fontWeight="bold" mb={2}>Descrição</Text>
                 <Text color="fg.muted" lineHeight="tall">{reimbursement.description}</Text>
               </Box>
+            </Box>
+
+            <Box bg="white" p={6} borderRadius="xl" boxShadow="sm" border="1px solid" borderColor="border.muted">
+              <Heading size="sm" mb={4}>Anexos</Heading>
+              <VStack align="stretch" gap={3} mb={canManageAttachments ? 6 : 0}>
+                {attachments.length === 0 ? (
+                  <Text color="fg.muted" fontSize="sm">Nenhum anexo cadastrado.</Text>
+                ) : (
+                  attachments.map((attachment) => (
+                    <HStack key={attachment.id} justify="space-between">
+                      <Box>
+                        <Text fontWeight="medium">{attachment.fileName}</Text>
+                        <Text fontSize="xs" color="fg.muted">{attachment.fileType.toUpperCase()}</Text>
+                      </Box>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={attachment.fileUrl} target="_blank" rel="noreferrer">Abrir</a>
+                      </Button>
+                    </HStack>
+                  ))
+                )}
+              </VStack>
+
+              {canManageAttachments ? (
+                <VStack align="stretch" gap={3}>
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                    bg="white"
+                  />
+                  <Text fontSize="xs" color="fg.muted">
+                    Envie um arquivo PDF, JPG ou PNG (máx. 5MB). O backend valida o tipo e armazena em `/uploads`.
+                  </Text>
+                  {attachmentError ? <Text color="red.500" fontSize="sm">{attachmentError}</Text> : null}
+                  <Button loading={addAttachmentMutation.isPending} onClick={handleAddAttachment}>
+                    Enviar anexo
+                  </Button>
+                </VStack>
+              ) : null}
             </Box>
 
             <Box bg="white" p={6} borderRadius="xl" boxShadow="sm" border="1px solid" borderColor="border.muted">

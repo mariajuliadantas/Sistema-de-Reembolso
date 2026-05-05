@@ -31,6 +31,14 @@ export interface ReimbursementHistoryEntry {
   };
 }
 
+export interface ReimbursementAttachment {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: 'pdf' | 'jpg' | 'jpeg' | 'png';
+  createdAt: string;
+}
+
 export interface Reimbursement {
   id: string;
   description: string;

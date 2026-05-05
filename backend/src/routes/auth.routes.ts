@@ -3,6 +3,10 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
+import { sendError } from '../utils/httpResponse';
+import { UserService } from '../services/UserService';
+import { handleHttpError } from '../utils/errorHandler';
+import { createUserSchema } from '../schemas/user.schema';
 
 const router = Router();
 
@@ -12,30 +16,26 @@ const loginSchema = z.object({
   password: z.string().min(1, 'A senha é obrigatória'),
 });
 
-const registerSchema = z.object({
-  name: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
-});
+const userService = new UserService();
 
 router.post('/login', async (req: Request, res: Response) => {
   try {
     // Validação de entrada usando Zod
     const parsedData = loginSchema.safeParse(req.body);
     if (!parsedData.success) {
-      return res.status(400).json({ errors: parsedData.error.format() });
+      return sendError(res, 400, parsedData.error.issues[0]?.message || 'Dados inválidos');
     }
 
     const { email, password } = parsedData.data;
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return sendError(res, 401, 'Credenciais inválidas');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+      return sendError(res, 401, 'Credenciais inválidas');
     }
 
     const secret = process.env.JWT_SECRET;
@@ -56,48 +56,28 @@ router.post('/login', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Erro no login:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor' });
+    return sendError(res, 500, 'Erro interno do servidor');
   }
 });
 
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const parsedData = registerSchema.safeParse(req.body);
+    const parsedData = createUserSchema
+      .pick({ name: true, email: true, password: true })
+      .safeParse(req.body);
     if (!parsedData.success) {
-      return res.status(400).json({ errors: parsedData.error.format() });
+      return sendError(res, 400, parsedData.error.issues[0]?.message || 'Dados inválidos');
     }
 
     const { name, email, password } = parsedData.data;
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-
-    if (existingUser) {
-      return res.status(409).json({ error: 'Já existe um usuário com este e-mail' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        role: 'COLLABORATOR',
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
-    });
+    const user = await userService.create({ name, email, password, role: 'COLLABORATOR' });
 
     return res.status(201).json({
       message: 'Conta criada com sucesso',
       user,
     });
   } catch (error) {
-    console.error('Erro no registro:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor' });
+    return handleHttpError(error, res);
   }
 });
 
