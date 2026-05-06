@@ -298,7 +298,7 @@ describe('Fluxo de Reembolso', () => {
         .set('Authorization', `Bearer ${managerToken}`);
 
       expect(managerList.status).toBe(200);
-      const hasHandledRequest = managerList.body.some((item: { id: string }) => item.id === reimbursementId);
+      const hasHandledRequest = managerList.body.items.some((item: { id: string }) => item.id === reimbursementId);
       expect(hasHandledRequest).toBe(true);
     });
   });

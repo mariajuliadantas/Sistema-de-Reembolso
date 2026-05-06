@@ -24,6 +24,14 @@ export const listReimbursementsQuerySchema = z.object({
     (v) => (typeof v === 'string' ? v.trim() : undefined),
     z.string().min(1).max(200).optional(),
   ),
+  page: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : Number(v)),
+    z.number().int().positive().optional().default(1),
+  ),
+  limit: z.preprocess(
+    (v) => (v === '' || v === undefined ? undefined : Number(v)),
+    z.number().int().positive().max(100).optional().default(10),
+  ),
 });
 
 export type ListReimbursementsQuery = z.infer<typeof listReimbursementsQuerySchema>;

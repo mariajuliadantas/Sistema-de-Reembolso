@@ -37,28 +37,37 @@ const Dashboard = () => {
   const categoryFilter = searchParams.get('categoryId') || 'ALL';
   const sortBy = searchParams.get('sortBy') || 'DATE_DESC';
   const requesterSearch = searchParams.get('requester') ?? '';
+  const pageParam = Number(searchParams.get('page') || '1');
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const [requesterInput, setRequesterInput] = useState(requesterSearch);
 
   const apiSortBy = sortBy.startsWith('VALUE') ? 'value' : 'expenseDate';
   const apiSortOrder = sortBy.endsWith('ASC') ? 'asc' : 'desc';
 
-  const { data: reimbursements, isLoading, isError } = useReimbursements({
+  const { data: reimbursementsResponse, isLoading, isError } = useReimbursements({
     status: statusFilter === 'ALL' ? undefined : statusFilter,
     categoryId: categoryFilter === 'ALL' ? undefined : categoryFilter,
     requesterSearch: canSearchRequester ? requesterSearch : undefined,
     sortBy: apiSortBy,
     sortOrder: apiSortOrder,
+    page,
+    limit: 10,
   });
+  const reimbursements = reimbursementsResponse?.items ?? [];
+  const pagination = reimbursementsResponse?.pagination;
   const submitMutation = useSubmitReimbursement();
   const cancelMutation = useCancelReimbursement();
 
-  const updateQueryParam = useCallback((key: string, value: string) => {
+  const updateQueryParam = useCallback((key: string, value: string, options?: { resetPage?: boolean }) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       if (!value || value === 'ALL') {
         next.delete(key);
       } else {
         next.set(key, value);
+      }
+      if (options?.resetPage !== false && key !== 'page') {
+        next.delete('page');
       }
       return next;
     });
@@ -195,7 +204,7 @@ const Dashboard = () => {
         </HStack>
       </Box>
 
-      {reimbursements && reimbursements.length > 0 ? (
+      {reimbursements.length > 0 ? (
         <Box 
           bg="white" 
           borderRadius="xl" 
@@ -299,6 +308,32 @@ const Dashboard = () => {
           </VStack>
         </Box>
       )}
+
+      {pagination ? (
+        <Flex mt={4} justify="space-between" align="center">
+          <Text fontSize="sm" color="fg.muted">
+            Página {pagination.page} de {pagination.totalPages} - {pagination.totalItems} registro(s)
+          </Text>
+          <HStack>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.hasPreviousPage}
+              onClick={() => updateQueryParam('page', String(Math.max(1, pagination.page - 1)), { resetPage: false })}
+            >
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!pagination.hasNextPage}
+              onClick={() => updateQueryParam('page', String(pagination.page + 1), { resetPage: false })}
+            >
+              Próxima
+            </Button>
+          </HStack>
+        </Flex>
+      ) : null}
     </Box>
   );
 };

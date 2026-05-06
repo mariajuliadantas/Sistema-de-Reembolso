@@ -14,6 +14,20 @@ export interface ReimbursementListFilters {
   requesterSearch?: string;
   sortBy?: 'expenseDate' | 'value' | 'createdAt';
   sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedReimbursementsResponse {
+  items: Reimbursement[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
 }
 
 export const useReimbursements = (filters: ReimbursementListFilters = {}) => {
@@ -23,11 +37,13 @@ export const useReimbursements = (filters: ReimbursementListFilters = {}) => {
     requesterSearch: filters.requesterSearch?.trim() || undefined,
     sortBy: filters.sortBy ?? 'createdAt',
     sortOrder: filters.sortOrder ?? 'desc',
+    page: filters.page ?? 1,
+    limit: filters.limit ?? 10,
   };
 
   return useQuery({
     queryKey: ['reimbursements', normalizedFilters],
-    queryFn: async (): Promise<Reimbursement[]> => {
+    queryFn: async (): Promise<PaginatedReimbursementsResponse> => {
       const { data } = await api.get('/reimbursements', {
         params: normalizedFilters,
       });

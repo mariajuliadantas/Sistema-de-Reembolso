@@ -133,77 +133,85 @@ export class ReimbursementService {
     return and;
   }
 
-  async getAll(user: { id: string; role: string }, filters: ListReimbursementsQuery) {
-    const orderBy = this.listOrderBy(filters);
-    const requesterSelect = { select: { id: true, name: true, email: true } } as const;
-
+  private listBaseWhere(user: { id: string; role: string }, filters: ListReimbursementsQuery): Prisma.ReimbursementWhereInput {
     if (user.role === 'COLLABORATOR') {
       const extraAnd = this.listExtraAnd(filters);
-      return prisma.reimbursement.findMany({
-        where: {
-          AND: [{ requesterId: user.id }, ...extraAnd],
-        },
-        include: { category: true, requester: requesterSelect },
-        orderBy,
-      });
+      return {
+        AND: [{ requesterId: user.id }, ...extraAnd],
+      };
     }
 
     if (user.role === 'MANAGER') {
       const extraAnd = this.listExtraAnd(filters);
-      return prisma.reimbursement.findMany({
-        where: {
-          AND: [
-            {
-              OR: [
-                { status: 'SUBMITTED' },
-                {
-                  history: {
-                    some: {
-                      userId: user.id,
-                      action: { in: ['APPROVED', 'REJECTED'] },
-                    },
+      return {
+        AND: [
+          {
+            OR: [
+              { status: 'SUBMITTED' },
+              {
+                history: {
+                  some: {
+                    userId: user.id,
+                    action: { in: ['APPROVED', 'REJECTED'] },
                   },
                 },
-              ],
-            },
-            ...extraAnd,
-          ],
-        },
-        include: {
-          category: true,
-          requester: requesterSelect,
-        },
-        orderBy,
-      });
+              },
+            ],
+          },
+          ...extraAnd,
+        ],
+      };
     }
 
     if (user.role === 'FINANCIAL') {
       const extraAnd = this.listExtraAnd(filters, { omitStatus: true });
-      return prisma.reimbursement.findMany({
-        where: {
-          AND: [{ status: 'APPROVED' }, ...extraAnd],
-        },
-        include: {
-          category: true,
-          requester: requesterSelect,
-        },
-        orderBy,
-      });
+      return {
+        AND: [{ status: 'APPROVED' }, ...extraAnd],
+      };
     }
 
     if (user.role === 'ADMIN') {
       const extraAnd = this.listExtraAnd(filters);
-      return prisma.reimbursement.findMany({
-        where: extraAnd.length ? { AND: extraAnd } : {},
+      return extraAnd.length ? { AND: extraAnd } : {};
+    }
+
+    return { id: '__no-access__' };
+  }
+
+  async getAll(user: { id: string; role: string }, filters: ListReimbursementsQuery) {
+    const orderBy = this.listOrderBy(filters);
+    const requesterSelect = { select: { id: true, name: true, email: true } } as const;
+    const where = this.listBaseWhere(user, filters);
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const [totalItems, items] = await Promise.all([
+      prisma.reimbursement.count({ where }),
+      prisma.reimbursement.findMany({
+        where,
         include: {
           category: true,
           requester: requesterSelect,
         },
         orderBy,
-      });
-    }
+        skip,
+        take: limit,
+      }),
+    ]);
 
-    return [];
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+        hasPreviousPage: page > 1,
+        hasNextPage: page < totalPages,
+      },
+    };
   }
 
   async findById(id: string, user: { id: string; role: string }) {
