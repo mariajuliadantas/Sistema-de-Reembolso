@@ -5,13 +5,32 @@ import type {
   CreateReimbursementDTO,
   UpdateReimbursementDTO,
   ReimbursementAttachment,
+  ReimbursementStatus,
 } from '../types/reimbursement';
 
-export const useReimbursements = () => {
+export interface ReimbursementListFilters {
+  status?: ReimbursementStatus;
+  categoryId?: string;
+  requesterSearch?: string;
+  sortBy?: 'expenseDate' | 'value' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export const useReimbursements = (filters: ReimbursementListFilters = {}) => {
+  const normalizedFilters = {
+    status: filters.status,
+    categoryId: filters.categoryId,
+    requesterSearch: filters.requesterSearch?.trim() || undefined,
+    sortBy: filters.sortBy ?? 'createdAt',
+    sortOrder: filters.sortOrder ?? 'desc',
+  };
+
   return useQuery({
-    queryKey: ['reimbursements'],
+    queryKey: ['reimbursements', normalizedFilters],
     queryFn: async (): Promise<Reimbursement[]> => {
-      const { data } = await api.get('/reimbursements');
+      const { data } = await api.get('/reimbursements', {
+        params: normalizedFilters,
+      });
       return data;
     },
   });
@@ -37,7 +56,9 @@ export const useCreateReimbursement = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
     },
   });
 };
@@ -51,7 +72,9 @@ export const useUpdateReimbursement = () => {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', variables.id] });
     },
   });
@@ -66,7 +89,9 @@ export const useSubmitReimbursement = () => {
       return data;
     },
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', id] });
     },
   });
@@ -81,7 +106,9 @@ export const useApproveReimbursement = () => {
       return data;
     },
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', id] });
     },
   });
@@ -96,7 +123,9 @@ export const useRejectReimbursement = () => {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', variables.id] });
     },
   });
@@ -111,7 +140,9 @@ export const usePayReimbursement = () => {
       return data;
     },
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', id] });
     },
   });
@@ -126,7 +157,9 @@ export const useCancelReimbursement = () => {
       return data;
     },
     onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: ['reimbursements'] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', id] });
     },
   });

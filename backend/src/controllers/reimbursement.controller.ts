@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ReimbursementService } from '../services/ReimbursementService';
 import { createReimbursementSchema, updateReimbursementSchema, createAttachmentSchema } from '../schemas/reimbursementSchema';
+import { listReimbursementsQuerySchema } from '../schemas/reimbursementListQuerySchema';
 import { handleHttpError } from '../utils/errorHandler';
 import { z } from 'zod';
 import { AppError } from '../utils/AppError';
@@ -37,7 +38,11 @@ const inferFileType = (mimetype: string) => {
 export class ReimbursementController {
   async getAll(req: Request, res: Response) {
     try {
-      const reimbursements = await reimbursementService.getAll(req.user!);
+      const parsed = listReimbursementsQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return handleHttpError(parsed.error, res);
+      }
+      const reimbursements = await reimbursementService.getAll(req.user!, parsed.data);
       res.status(200).json(reimbursements);
     } catch (error) {
       handleHttpError(error, res);

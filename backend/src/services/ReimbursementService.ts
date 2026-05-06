@@ -1,7 +1,9 @@
 import { prisma } from '../utils/prisma';
 import dayjs from 'dayjs';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import { createReimbursementSchema, updateReimbursementSchema, createAttachmentSchema } from '../schemas/reimbursementSchema';
+import type { ListReimbursementsQuery } from '../schemas/reimbursementListQuerySchema';
 import { AppError } from '../utils/AppError';
 
 export class ReimbursementService {
@@ -99,52 +101,108 @@ export class ReimbursementService {
     });
   }
 
-  async getAll(user: { id: string; role: string }) {
-    if (user.role === 'COLLABORATOR') {
-      return prisma.reimbursement.findMany({
-        where: { requesterId: user.id },
-        include: { category: true },
-        orderBy: { createdAt: 'desc' },
+  private listOrderBy(filters: ListReimbursementsQuery): Prisma.ReimbursementOrderByWithRelationInput {
+    const dir = filters.sortOrder;
+    if (filters.sortBy === 'expenseDate') {
+      return { expenseDate: dir };
+    }
+    if (filters.sortBy === 'value') {
+      return { value: dir };
+    }
+    return { createdAt: dir };
+  }
+
+  private listExtraAnd(filters: ListReimbursementsQuery, options?: { omitStatus?: boolean }): Prisma.ReimbursementWhereInput[] {
+    const and: Prisma.ReimbursementWhereInput[] = [];
+    if (!options?.omitStatus && filters.status) {
+      and.push({ status: filters.status });
+    }
+    if (filters.categoryId) {
+      and.push({ categoryId: filters.categoryId });
+    }
+    if (filters.requesterSearch) {
+      and.push({
+        requester: {
+          OR: [
+            { name: { contains: filters.requesterSearch } },
+            { email: { contains: filters.requesterSearch } },
+          ],
+        },
       });
-    } else if (user.role === 'MANAGER') {
+    }
+    return and;
+  }
+
+  async getAll(user: { id: string; role: string }, filters: ListReimbursementsQuery) {
+    const orderBy = this.listOrderBy(filters);
+    const requesterSelect = { select: { id: true, name: true, email: true } } as const;
+
+    if (user.role === 'COLLABORATOR') {
+      const extraAnd = this.listExtraAnd(filters);
       return prisma.reimbursement.findMany({
         where: {
-          OR: [
-            { status: 'SUBMITTED' },
+          AND: [{ requesterId: user.id }, ...extraAnd],
+        },
+        include: { category: true, requester: requesterSelect },
+        orderBy,
+      });
+    }
+
+    if (user.role === 'MANAGER') {
+      const extraAnd = this.listExtraAnd(filters);
+      return prisma.reimbursement.findMany({
+        where: {
+          AND: [
             {
-              history: {
-                some: {
-                  userId: user.id,
-                  action: { in: ['APPROVED', 'REJECTED'] },
+              OR: [
+                { status: 'SUBMITTED' },
+                {
+                  history: {
+                    some: {
+                      userId: user.id,
+                      action: { in: ['APPROVED', 'REJECTED'] },
+                    },
+                  },
                 },
-              },
+              ],
             },
+            ...extraAnd,
           ],
         },
         include: {
           category: true,
-          requester: { select: { id: true, name: true, email: true } }
+          requester: requesterSelect,
         },
-        orderBy: { createdAt: 'desc' },
-      });
-    } else if (user.role === 'FINANCIAL') {
-      return prisma.reimbursement.findMany({
-        where: { status: 'APPROVED' },
-        include: {
-          category: true,
-          requester: { select: { id: true, name: true, email: true } }
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-    } else if (user.role === 'ADMIN') {
-      return prisma.reimbursement.findMany({
-        include: {
-          category: true,
-          requester: { select: { id: true, name: true, email: true } }
-        },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
       });
     }
+
+    if (user.role === 'FINANCIAL') {
+      const extraAnd = this.listExtraAnd(filters, { omitStatus: true });
+      return prisma.reimbursement.findMany({
+        where: {
+          AND: [{ status: 'APPROVED' }, ...extraAnd],
+        },
+        include: {
+          category: true,
+          requester: requesterSelect,
+        },
+        orderBy,
+      });
+    }
+
+    if (user.role === 'ADMIN') {
+      const extraAnd = this.listExtraAnd(filters);
+      return prisma.reimbursement.findMany({
+        where: extraAnd.length ? { AND: extraAnd } : {},
+        include: {
+          category: true,
+          requester: requesterSelect,
+        },
+        orderBy,
+      });
+    }
+
     return [];
   }
 
