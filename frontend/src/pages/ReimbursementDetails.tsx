@@ -186,9 +186,14 @@ const ReimbursementDetails = () => {
                         <Text fontWeight="medium">{attachment.fileName}</Text>
                         <Text fontSize="xs" color="fg.muted">{attachment.fileType.toUpperCase()}</Text>
                       </Box>
-                      <Button asChild size="sm" variant="outline">
-                        <a href={attachment.fileUrl} target="_blank" rel="noreferrer">Abrir</a>
-                      </Button>
+                      <HStack>
+                        <Button asChild size="sm" variant="outline">
+                          <a href={attachment.fileUrl} target="_blank" rel="noreferrer">Preview</a>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href={attachment.fileUrl} download={attachment.fileName}>Download</a>
+                        </Button>
+                      </HStack>
                     </HStack>
                   ))
                 )}

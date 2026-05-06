@@ -55,6 +55,7 @@ const Dashboard = () => {
   });
   const reimbursements = reimbursementsResponse?.items ?? [];
   const pagination = reimbursementsResponse?.pagination;
+  const totals = reimbursementsResponse?.totals;
   const submitMutation = useSubmitReimbursement();
   const cancelMutation = useCancelReimbursement();
 
@@ -122,6 +123,27 @@ const Dashboard = () => {
           </Button>
         ) : null}
       </Flex>
+
+      {totals ? (
+        <HStack mb={6} gap={4} flexWrap="wrap" align="stretch">
+          <Box bg="white" borderRadius="xl" border="1px solid" borderColor="border.muted" p={4} minW="220px">
+            <Text fontSize="sm" color="fg.muted">Total de solicitações</Text>
+            <Heading size="md">{totals.totalRequests}</Heading>
+          </Box>
+          <Box bg="white" borderRadius="xl" border="1px solid" borderColor="border.muted" p={4} minW="220px">
+            <Text fontSize="sm" color="fg.muted">Valor total</Text>
+            <Heading size="md">{formatCurrency(totals.totalAmount)}</Heading>
+          </Box>
+          <Box bg="white" borderRadius="xl" border="1px solid" borderColor="border.muted" p={4} minW="220px">
+            <Text fontSize="sm" color="fg.muted">Aprovadas</Text>
+            <Heading size="md">{totals.byStatus.APPROVED}</Heading>
+          </Box>
+          <Box bg="white" borderRadius="xl" border="1px solid" borderColor="border.muted" p={4} minW="220px">
+            <Text fontSize="sm" color="fg.muted">Enviadas para análise</Text>
+            <Heading size="md">{totals.byStatus.SUBMITTED}</Heading>
+          </Box>
+        </HStack>
+      ) : null}
 
       <Box mb={6} bg="white" borderRadius="xl" border="1px solid" borderColor="border.muted" p={4}>
         <HStack gap={3} align="end" flexWrap="wrap">

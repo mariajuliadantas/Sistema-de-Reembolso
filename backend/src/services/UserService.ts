@@ -18,7 +18,7 @@ type UpdateUserInput = {
 
 export class UserService {
   async create(data: CreateUserInput) {
-    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    const existingUser = await prisma.user.findFirst({ where: { email: data.email, deletedAt: null } });
     if (existingUser) {
       throw new AppError('Já existe um usuário com este e-mail', 409);
     }
@@ -43,8 +43,8 @@ export class UserService {
   }
 
   async getById(id: string) {
-    const user = await prisma.user.findUnique({
-      where: { id },
+    const user = await prisma.user.findFirst({
+      where: { id, deletedAt: null },
       select: {
         id: true,
         name: true,
@@ -62,6 +62,7 @@ export class UserService {
 
   async getAll() {
     return prisma.user.findMany({
+      where: { deletedAt: null },
       select: {
         id: true,
         name: true,
@@ -79,7 +80,7 @@ export class UserService {
 
     if (data.email) {
       const existing = await prisma.user.findFirst({
-        where: { email: data.email, NOT: { id } },
+        where: { email: data.email, deletedAt: null, NOT: { id } },
       });
       if (existing) {
         throw new AppError('Já existe um usuário com este e-mail', 409);
@@ -109,7 +110,7 @@ export class UserService {
   }
 
   async delete(id: string) {
-    await this.getById(id);
+    const currentUser = await this.getById(id);
 
     const related = await prisma.reimbursement.count({ where: { requesterId: id } });
     if (related > 0) {
@@ -121,6 +122,12 @@ export class UserService {
       throw new AppError('Não é possível excluir usuário com histórico de ações vinculado', 409);
     }
 
-    await prisma.user.delete({ where: { id } });
+    await prisma.user.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        email: `${currentUser.email}#deleted#${Date.now()}`,
+      },
+    });
   }
 }

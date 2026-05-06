@@ -28,6 +28,18 @@ export interface PaginatedReimbursementsResponse {
     hasPreviousPage: boolean;
     hasNextPage: boolean;
   };
+  totals: {
+    totalRequests: number;
+    totalAmount: number;
+    byStatus: {
+      DRAFT: number;
+      SUBMITTED: number;
+      APPROVED: number;
+      REJECTED: number;
+      PAID: number;
+      CANCELLED: number;
+    };
+  };
 }
 
 export const useReimbursements = (filters: ReimbursementListFilters = {}) => {

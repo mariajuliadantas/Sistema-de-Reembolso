@@ -21,6 +21,7 @@ model User {
   passwordHash String
   // Values: COLLABORATOR | MANAGER | FINANCIAL | ADMIN
   role         String   @default("COLLABORATOR")
+  deletedAt    DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

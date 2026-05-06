@@ -28,7 +28,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const { email, password } = parsedData.data;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findFirst({ where: { email, deletedAt: null } });
     if (!user) {
       return sendError(res, 401, 'Credenciais inválidas');
     }

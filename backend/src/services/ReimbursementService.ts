@@ -186,7 +186,7 @@ export class ReimbursementService {
     const limit = filters.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const [totalItems, items] = await Promise.all([
+    const [totalItems, items, aggregatedTotals, statusGrouped] = await Promise.all([
       prisma.reimbursement.count({ where }),
       prisma.reimbursement.findMany({
         where,
@@ -198,9 +198,33 @@ export class ReimbursementService {
         skip,
         take: limit,
       }),
+      prisma.reimbursement.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { value: true },
+      }),
+      prisma.reimbursement.groupBy({
+        by: ['status'],
+        where,
+        _count: { _all: true },
+      }),
     ]);
 
     const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    const statusCounts = {
+      DRAFT: 0,
+      SUBMITTED: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      PAID: 0,
+      CANCELLED: 0,
+    };
+    for (const entry of statusGrouped) {
+      if (entry.status in statusCounts) {
+        statusCounts[entry.status as keyof typeof statusCounts] = entry._count._all;
+      }
+    }
+
     return {
       items,
       pagination: {
@@ -210,6 +234,11 @@ export class ReimbursementService {
         totalPages,
         hasPreviousPage: page > 1,
         hasNextPage: page < totalPages,
+      },
+      totals: {
+        totalRequests: aggregatedTotals._count._all,
+        totalAmount: aggregatedTotals._sum.value ?? 0,
+        byStatus: statusCounts,
       },
     };
   }
