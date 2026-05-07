@@ -12,6 +12,7 @@ import {
   useReimbursementAttachments,
   useAddReimbursementAttachment,
 } from '../hooks/useReimbursements';
+import { useReimbursementRulesConfig } from '../hooks/useReimbursementRulesConfig';
 import { useAuth } from '../hooks/useAuth';
 import StatusBadge from '../components/shared/StatusBadge';
 import { ArrowLeft, Calendar, Tag, DollarSign, FileText, CheckCircle } from 'lucide-react';
@@ -34,6 +35,7 @@ const ReimbursementDetails = () => {
   const payMutation = usePayReimbursement();
   const cancelMutation = useCancelReimbursement();
   const { data: attachments = [] } = useReimbursementAttachments(id!);
+  const { data: reimbursementRules } = useReimbursementRulesConfig();
   const addAttachmentMutation = useAddReimbursementAttachment();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attachmentError, setAttachmentError] = useState('');
@@ -54,10 +56,9 @@ const ReimbursementDetails = () => {
     reimbursement?.requesterId === user.id &&
     reimbursement?.status === 'DRAFT';
 
-  const attachmentRuleThreshold = Number(
-    import.meta.env.VITE_REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE || 500,
-  );
-  const attachmentRuleActive = Number.isFinite(attachmentRuleThreshold) && attachmentRuleThreshold > 0;
+  const attachmentRuleThreshold = reimbursementRules?.requireAttachmentAboveValue ?? null;
+  const attachmentRuleActive =
+    attachmentRuleThreshold != null && Number.isFinite(attachmentRuleThreshold) && attachmentRuleThreshold > 0;
   const hasUploadedReceipt = attachments.some(
     (a) => typeof a.fileUrl === 'string' && a.fileUrl.includes('/uploads/'),
   );
@@ -247,8 +248,9 @@ const ReimbursementDetails = () => {
                   <Box bg="orange.50" borderWidth="1px" borderColor="orange.200" borderRadius="md" p={3}>
                     <Text fontSize="sm" color="fg.muted">
                       Valor acima de {formatCurrency(attachmentRuleThreshold)}: é obrigatório enviar pelo menos um
-                      comprovante (upload de arquivo) antes de enviar para aprovação. O limite pode ser ajustado na API
-                      (`REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`) e aqui (`VITE_REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`).
+                      comprovante (upload de arquivo) antes de enviar para aprovação. O limite é definido apenas no
+                      backend (`REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`); esta tela usa o mesmo valor retornado
+                      por <Box as="code" fontSize="xs">GET /api/config/reimbursement-rules</Box>.
                     </Text>
                   </Box>
                 ) : null}

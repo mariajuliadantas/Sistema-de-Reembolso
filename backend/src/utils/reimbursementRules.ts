@@ -2,6 +2,7 @@
  * Valor acima do qual é obrigatório pelo menos um comprovante enviado por upload (URL contendo `/uploads/`).
  * Configure `REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`: número positivo (ex.: 500), ou 0 para desativar a regra.
  * Se a variável não existir, o padrão é 500.
+ * A UI deve usar `GET /api/config/reimbursement-rules` (mesmo valor) em vez de variável Vite duplicada.
  */
 export const getAttachmentRequirementThreshold = (): number | null => {
   const raw = process.env.REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE?.trim();
