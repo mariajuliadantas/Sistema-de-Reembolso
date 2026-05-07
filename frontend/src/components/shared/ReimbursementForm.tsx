@@ -1,5 +1,6 @@
 import { Box, Button, Field, Input, Textarea, VStack, HStack } from '@chakra-ui/react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
+import { formatCurrency } from '../../lib/reimbursement';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCategories } from '../../hooks/useCategories';
@@ -37,6 +38,8 @@ const ReimbursementForm = ({ reimbursement }: ReimbursementFormProps) => {
   const {
     register,
     handleSubmit,
+    watch,
+    setError,
     formState: { errors },
   } = useForm<ReimbursementFormData>({
     resolver: zodResolver(schema),
@@ -50,7 +53,22 @@ const ReimbursementForm = ({ reimbursement }: ReimbursementFormProps) => {
     },
   });
 
+  /* eslint-disable react-hooks/incompatible-library -- watch necessário para limite por categoria */
+  const watchedCategoryId = watch('categoryId');
+  const watchedValue = watch('value');
+  /* eslint-enable react-hooks/incompatible-library */
+  const selectedCategory = categories?.find((c) => c.id === watchedCategoryId);
+
   const onSubmit: SubmitHandler<ReimbursementFormData> = async (data) => {
+    const cat = categories?.find((c) => c.id === data.categoryId);
+    if (cat?.maxAmount != null && data.value > cat.maxAmount) {
+      setError('value', {
+        type: 'manual',
+        message: `O valor não pode ultrapassar o limite da categoria (${formatCurrency(cat.maxAmount)}).`,
+      });
+      return;
+    }
+
     const payload = {
       ...data,
       expenseDate: new Date(`${data.expenseDate}T00:00:00.000Z`).toISOString(),
@@ -117,6 +135,13 @@ const ReimbursementForm = ({ reimbursement }: ReimbursementFormProps) => {
               bg="white"
             />
             <Field.ErrorText>{errors.value?.message}</Field.ErrorText>
+            {selectedCategory?.maxAmount != null &&
+            typeof watchedValue === 'number' &&
+            watchedValue > 0 ? (
+              <Box as="p" fontSize="xs" color="fg.muted" mt={1}>
+                Limite desta categoria: {formatCurrency(selectedCategory.maxAmount)}
+              </Box>
+            ) : null}
           </Field.Root>
         </HStack>
 

@@ -35,6 +35,8 @@ model Category {
   id        String   @id @default(uuid())
   name      String   @unique
   active    Boolean  @default(true)
+  /// Valor máximo permitido por solicitação nesta categoria (null = sem limite)
+  maxAmount Float?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

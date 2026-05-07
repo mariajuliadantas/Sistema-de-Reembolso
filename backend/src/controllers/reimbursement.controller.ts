@@ -138,31 +138,23 @@ export class ReimbursementController {
       const { id } = req.params;
       const file = req.file;
 
-      let validatedData: z.infer<typeof createAttachmentSchema>;
-
-      if (file) {
-        const fileType = inferFileType(file.mimetype);
-        if (!fileType) {
-          throw new AppError('Tipo de arquivo inválido. Use PDF, JPG ou PNG.', 400);
-        }
-
-        validatedData = createAttachmentSchema.parse({
-          fileName: file.originalname || file.filename,
-          fileUrl: `${getPublicBaseUrl(req)}/uploads/${file.filename}`,
-          fileType,
-        });
-      } else {
-        const hasJsonPayload =
-          req.body &&
-          typeof req.body === 'object' &&
-          ('fileName' in req.body || 'fileUrl' in req.body || 'fileType' in req.body);
-
-        if (!hasJsonPayload) {
-          throw new AppError('Arquivo é obrigatório (campo multipart "file")', 400);
-        }
-
-        validatedData = createAttachmentSchema.parse(req.body);
+      if (!file) {
+        throw new AppError(
+          'Envie o comprovante como arquivo multipart no campo "file" (PDF, JPG ou PNG, máx. 5MB).',
+          400,
+        );
       }
+
+      const fileType = inferFileType(file.mimetype);
+      if (!fileType) {
+        throw new AppError('Tipo de arquivo inválido. Use PDF, JPG ou PNG.', 400);
+      }
+
+      const validatedData = createAttachmentSchema.parse({
+        fileName: file.originalname || file.filename,
+        fileUrl: `${getPublicBaseUrl(req)}/uploads/${file.filename}`,
+        fileType,
+      });
 
       const attachment = await reimbursementService.addAttachment(String(id), validatedData, req.user!);
       res.status(201).json(attachment);

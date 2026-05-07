@@ -49,7 +49,24 @@ const ReimbursementDetails = () => {
     reimbursement?.status === 'DRAFT';
   const canApprove = user?.role === 'MANAGER' && reimbursement?.status === 'SUBMITTED';
   const canPay = user?.role === 'FINANCIAL' && reimbursement?.status === 'APPROVED';
-  const canManageAttachments = user?.role === 'COLLABORATOR' && reimbursement?.requesterId === user.id;
+  const canManageAttachments =
+    user?.role === 'COLLABORATOR' &&
+    reimbursement?.requesterId === user.id &&
+    reimbursement?.status === 'DRAFT';
+
+  const attachmentRuleThreshold = Number(
+    import.meta.env.VITE_REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE || 500,
+  );
+  const attachmentRuleActive = Number.isFinite(attachmentRuleThreshold) && attachmentRuleThreshold > 0;
+  const hasUploadedReceipt = attachments.some(
+    (a) => typeof a.fileUrl === 'string' && a.fileUrl.includes('/uploads/'),
+  );
+  const showAttachmentRequirementHint =
+    attachmentRuleActive &&
+    reimbursement &&
+    reimbursement.value > attachmentRuleThreshold &&
+    !hasUploadedReceipt &&
+    reimbursement.status === 'DRAFT';
 
   const handleAddAttachment = async () => {
     setAttachmentError('');
@@ -225,6 +242,15 @@ const ReimbursementDetails = () => {
                   <Button variant="outline" onClick={() => navigate(`/reimbursements/${reimbursement.id}/edit`)}>
                     Editar Rascunho
                   </Button>
+                ) : null}
+                {showAttachmentRequirementHint ? (
+                  <Box bg="orange.50" borderWidth="1px" borderColor="orange.200" borderRadius="md" p={3}>
+                    <Text fontSize="sm" color="fg.muted">
+                      Valor acima de {formatCurrency(attachmentRuleThreshold)}: é obrigatório enviar pelo menos um
+                      comprovante (upload de arquivo) antes de enviar para aprovação. O limite pode ser ajustado na API
+                      (`REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`) e aqui (`VITE_REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`).
+                    </Text>
+                  </Box>
                 ) : null}
                 {canSubmit ? (
                   <Button loading={submitMutation.isPending} onClick={() => submitMutation.mutate(reimbursement.id)}>

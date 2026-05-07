@@ -9,8 +9,17 @@ describe('Fluxo de Reembolso', () => {
   let adminToken: string;
 
   const FOOD_CATEGORY_ID = '550e8400-e29b-41d4-a716-446655440004';
+  const TRANSPORT_CATEGORY_ID = '550e8400-e29b-41d4-a716-446655440005';
   const INACTIVE_CATEGORY_ID = '550e8400-e29b-41d4-a716-446655440006';
   const NON_EXISTENT_ID = '550e8400-e29b-41d4-a716-446655441999';
+
+  const minimalPdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n', 'utf-8');
+
+  const attachPdf = (reimbursementId: string, token: string) =>
+    request(app)
+      .post(`/api/reimbursements/${reimbursementId}/attachments`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', minimalPdf, { filename: 'nota.pdf', contentType: 'application/pdf' });
 
   beforeAll(async () => {
     const collabLogin = await request(app).post('/api/auth/login').send({
@@ -50,18 +59,28 @@ describe('Fluxo de Reembolso', () => {
     secondCollaboratorToken = secondCollabLogin.body.token;
   });
 
-  const createDraft = async () => {
+  const createDraftWith = async (overrides?: {
+    categoryId?: string;
+    value?: number;
+    description?: string;
+    expenseDate?: string;
+  }) => {
     const response = await request(app)
       .post('/api/reimbursements')
       .set('Authorization', `Bearer ${collaboratorToken}`)
       .send({
-        categoryId: FOOD_CATEGORY_ID,
-        description: 'Despesa de teste para fluxo',
-        value: 120,
-        expenseDate: new Date().toISOString(),
+        categoryId: overrides?.categoryId ?? FOOD_CATEGORY_ID,
+        description: overrides?.description ?? 'Despesa de teste para fluxo',
+        value: overrides?.value ?? 120,
+        expenseDate: overrides?.expenseDate ?? new Date().toISOString(),
       });
 
-    return response.body.id as string;
+    return { id: response.body.id as string, status: response.status, body: response.body };
+  };
+
+  const createDraft = async () => {
+    const { id } = await createDraftWith();
+    return id;
   };
 
   describe('Criação de Reembolso (POST /api/reimbursements)', () => {
@@ -109,6 +128,38 @@ describe('Fluxo de Reembolso', () => {
       expect(response.status).toBe(400);
       expect(response.body.message).toBe('Categoria inválida ou inativa');
       expect(response.body.error).toBe('Bad Request');
+    });
+
+    it('deve impedir valor acima do limite configurado na categoria', async () => {
+      const response = await request(app)
+        .post('/api/reimbursements')
+        .set('Authorization', `Bearer ${collaboratorToken}`)
+        .send({
+          categoryId: TRANSPORT_CATEGORY_ID,
+          description: 'Viagem longa',
+          value: 400,
+          expenseDate: new Date().toISOString(),
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('limite da categoria');
+    });
+
+    it('deve impedir data da despesa no futuro', async () => {
+      const future = new Date();
+      future.setDate(future.getDate() + 5);
+      const response = await request(app)
+        .post('/api/reimbursements')
+        .set('Authorization', `Bearer ${collaboratorToken}`)
+        .send({
+          categoryId: FOOD_CATEGORY_ID,
+          description: 'Despesa com data futura',
+          value: 20,
+          expenseDate: future.toISOString(),
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toContain('futuro');
     });
 
     it('deve falhar sem autenticação', async () => {
@@ -338,41 +389,42 @@ describe('Fluxo de Reembolso', () => {
   });
 
   describe('Anexos e Histórico', () => {
-    it('deve validar tipo de anexo e dono da solicitação', async () => {
+    it('deve validar tipo de anexo e dono da solicitação (upload multipart)', async () => {
       const reimbursementId = await createDraft();
 
       const invalidTypeRes = await request(app)
         .post(`/api/reimbursements/${reimbursementId}/attachments`)
         .set('Authorization', `Bearer ${collaboratorToken}`)
-        .send({
-          fileName: 'comprovante.exe',
-          fileUrl: 'https://example.com/comprovante.exe',
-          fileType: 'exe',
-        });
+        .attach('file', Buffer.from('MZ'), { filename: 'bad.exe', contentType: 'application/octet-stream' });
       expect(invalidTypeRes.status).toBe(400);
 
-      const notOwnerRes = await request(app)
-        .post(`/api/reimbursements/${reimbursementId}/attachments`)
-        .set('Authorization', `Bearer ${secondCollaboratorToken}`)
-        .send({
-          fileName: 'comprovante.pdf',
-          fileUrl: 'https://example.com/comprovante.pdf',
-          fileType: 'pdf',
-        });
+      const notOwnerRes = await attachPdf(reimbursementId, secondCollaboratorToken);
       expect(notOwnerRes.status).toBe(403);
     });
 
     it('deve retornar 404 ao anexar em solicitação inexistente', async () => {
-      const response = await request(app)
-        .post(`/api/reimbursements/${NON_EXISTENT_ID}/attachments`)
-        .set('Authorization', `Bearer ${collaboratorToken}`)
-        .send({
-          fileName: 'comprovante.pdf',
-          fileUrl: 'https://example.com/comprovante.pdf',
-          fileType: 'pdf',
-        });
-
+      const response = await attachPdf(NON_EXISTENT_ID, collaboratorToken);
       expect(response.status).toBe(404);
+    });
+
+    it('deve exigir comprovante por upload para valores acima do limiar ao submeter', async () => {
+      const { id, status } = await createDraftWith({ value: 600 });
+      expect(status).toBe(201);
+
+      const submitFail = await request(app)
+        .post(`/api/reimbursements/${id}/submit`)
+        .set('Authorization', `Bearer ${collaboratorToken}`);
+      expect(submitFail.status).toBe(400);
+      expect(submitFail.body.message).toMatch(/comprovante|upload/i);
+
+      const attachRes = await attachPdf(id, collaboratorToken);
+      expect(attachRes.status).toBe(201);
+
+      const submitOk = await request(app)
+        .post(`/api/reimbursements/${id}/submit`)
+        .set('Authorization', `Bearer ${collaboratorToken}`);
+      expect(submitOk.status).toBe(200);
+      expect(submitOk.body.status).toBe('SUBMITTED');
     });
 
     it('deve registrar histórico para ações relevantes', async () => {
@@ -405,14 +457,7 @@ describe('Fluxo de Reembolso', () => {
     it('deve registrar histórico ao adicionar anexo', async () => {
       const reimbursementId = await createDraft();
 
-      const addAttachmentRes = await request(app)
-        .post(`/api/reimbursements/${reimbursementId}/attachments`)
-        .set('Authorization', `Bearer ${collaboratorToken}`)
-        .send({
-          fileName: 'nota-fiscal.pdf',
-          fileUrl: 'https://example.com/nota-fiscal.pdf',
-          fileType: 'pdf',
-        });
+      const addAttachmentRes = await attachPdf(reimbursementId, collaboratorToken);
 
       expect(addAttachmentRes.status).toBe(201);
 
@@ -423,7 +468,7 @@ describe('Fluxo de Reembolso', () => {
       expect(historyResponse.status).toBe(200);
       const hasAttachmentHistory = historyResponse.body.some(
         (entry: { observation?: string }) =>
-          (entry.observation || '').includes('Attachment added: nota-fiscal.pdf'),
+          (entry.observation || '').includes('Attachment added: nota.pdf'),
       );
       expect(hasAttachmentHistory).toBe(true);
     });

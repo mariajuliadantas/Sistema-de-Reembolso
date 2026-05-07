@@ -23,22 +23,21 @@ const main = async () => {
         console.log(`Usuário criado: ${user.email} [${user.role}]`);
     }
 
-    // Categorias
     const categories = [
-        'Alimentação',
-        'Transporte',
-        'Hospedagem',
-        'Material de Escritório',
-        'Treinamento',
+        { name: 'Alimentação', maxAmount: null as number | null },
+        { name: 'Transporte', maxAmount: 300 },
+        { name: 'Hospedagem', maxAmount: 5000 },
+        { name: 'Material de Escritório', maxAmount: null },
+        { name: 'Treinamento', maxAmount: null },
     ];
 
-    for (const name of categories) {
+    for (const c of categories) {
         await prisma.category.upsert({
-            where: { name },
-            update: {},
-            create: { name, active: true },
+            where: { name: c.name },
+            update: { maxAmount: c.maxAmount },
+            create: { name: c.name, active: true, maxAmount: c.maxAmount },
         });
-        console.log(`Categoria criada: ${name}`);
+        console.log(`Categoria: ${c.name}${c.maxAmount != null ? ` (limite R$ ${c.maxAmount})` : ''}`);
     }
 
 

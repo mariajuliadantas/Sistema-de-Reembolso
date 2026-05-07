@@ -58,16 +58,19 @@ async function seedDatabase() {
         id: '550e8400-e29b-41d4-a716-446655440004',
         name: 'Alimentação',
         active: true,
+        maxAmount: null,
       },
       {
         id: '550e8400-e29b-41d4-a716-446655440005',
         name: 'Transporte',
         active: true,
+        maxAmount: 300,
       },
       {
         id: '550e8400-e29b-41d4-a716-446655440006',
         name: 'Inativa',
         active: false,
+        maxAmount: null,
       }
     ]
   });

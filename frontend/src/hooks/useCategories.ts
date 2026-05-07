@@ -26,7 +26,7 @@ export const useCreateCategory = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: { name: string; active?: boolean }) => {
+    mutationFn: async (payload: { name: string; active?: boolean; maxAmount?: number | null }) => {
       const { data } = await api.post('/categories', payload);
       return data as Category;
     },
@@ -42,7 +42,13 @@ export const useUpdateCategory = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: { name?: string; active?: boolean } }) => {
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: { name?: string; active?: boolean; maxAmount?: number | null };
+    }) => {
       const { data } = await api.put(`/categories/${id}`, payload);
       return data as Category;
     },

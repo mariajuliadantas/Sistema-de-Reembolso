@@ -81,6 +81,15 @@ describe('Categorias', () => {
   });
 
   describe('PUT /api/categories/:id (ADMIN)', () => {
+    it('permite definir limite máximo por categoria', async () => {
+      const create = await request(app)
+        .post('/api/categories')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ name: `Com limite ${Date.now()}`, maxAmount: 99.5 });
+      expect(create.status).toBe(201);
+      expect(create.body.maxAmount).toBe(99.5);
+    });
+
     it('atualiza nome da categoria', async () => {
       const create = await request(app)
         .post('/api/categories')

@@ -5,8 +5,32 @@ import type { Prisma } from '@prisma/client';
 import { createReimbursementSchema, updateReimbursementSchema, createAttachmentSchema } from '../schemas/reimbursementSchema';
 import type { ListReimbursementsQuery } from '../schemas/reimbursementListQuerySchema';
 import { AppError } from '../utils/AppError';
+import {
+  getAttachmentRequirementThreshold,
+  hasUploadedReceiptEvidence,
+} from '../utils/reimbursementRules';
 
 export class ReimbursementService {
+  private assertExpenseDateNotFuture(dateInput: string | Date) {
+    const expenseDay = dayjs(dateInput).startOf('day');
+    const today = dayjs().startOf('day');
+    if (expenseDay.isAfter(today)) {
+      throw new AppError('A data da despesa não pode ser no futuro', 400);
+    }
+  }
+
+  private assertValueWithinCategoryMax(
+    category: { maxAmount?: number | null; name: string },
+    value: number,
+  ) {
+    if (category.maxAmount != null && value > category.maxAmount) {
+      throw new AppError(
+        `O valor da solicitação (R$ ${value.toFixed(2)}) excede o limite da categoria "${category.name}" (máx. R$ ${category.maxAmount.toFixed(2)}).`,
+        400,
+      );
+    }
+  }
+
   async create(requesterId: string, data: z.infer<typeof createReimbursementSchema>) {
     const category = await prisma.category.findUnique({
       where: { id: data.categoryId },
@@ -16,10 +40,10 @@ export class ReimbursementService {
       throw new AppError('Categoria inválida ou inativa', 400);
     }
 
+    this.assertExpenseDateNotFuture(data.expenseDate);
+    this.assertValueWithinCategoryMax(category, data.value);
+
     const expenseDate = dayjs(data.expenseDate);
-    if (expenseDate.isAfter(dayjs())) {
-      throw new AppError('A data da despesa não pode ser no futuro', 400);
-    }
 
     return prisma.$transaction(async (tx) => {
       const reimbursement = await tx.reimbursement.create({
@@ -61,20 +85,23 @@ export class ReimbursementService {
       throw new AppError('Apenas reembolsos em DRAFT podem ser editados', 400);
     }
 
+    const categoryForLimit = data.categoryId
+      ? await prisma.category.findUnique({ where: { id: data.categoryId } })
+      : reimbursement.category;
+
     if (data.categoryId) {
-      const category = await prisma.category.findUnique({
-        where: { id: data.categoryId },
-      });
-      if (!category || !category.active) {
+      if (!categoryForLimit || !categoryForLimit.active) {
         throw new AppError('Categoria inválida ou inativa', 400);
       }
     }
 
+    const targetValue = data.value !== undefined ? data.value : reimbursement.value;
+    if (categoryForLimit) {
+      this.assertValueWithinCategoryMax(categoryForLimit, targetValue);
+    }
+
     if (data.expenseDate) {
-      const expenseDate = dayjs(data.expenseDate);
-      if (expenseDate.isAfter(dayjs())) {
-        throw new AppError('A data da despesa não pode ser no futuro', 400);
-      }
+      this.assertExpenseDateNotFuture(data.expenseDate);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -285,6 +312,21 @@ export class ReimbursementService {
       throw new AppError('Apenas reembolsos em DRAFT podem ser submetidos', 400);
     }
 
+    this.assertExpenseDateNotFuture(reimbursement.expenseDate);
+    this.assertValueWithinCategoryMax(reimbursement.category, reimbursement.value);
+
+    const attachmentThreshold = getAttachmentRequirementThreshold();
+    if (
+      attachmentThreshold !== null &&
+      reimbursement.value > attachmentThreshold &&
+      !hasUploadedReceiptEvidence(reimbursement.attachments)
+    ) {
+      throw new AppError(
+        `Para valores acima de R$ ${attachmentThreshold.toFixed(2)} é obrigatório anexar pelo menos um comprovante (arquivo PDF, JPG ou PNG enviado pelo upload).`,
+        400,
+      );
+    }
+
     return prisma.$transaction(async (tx) => {
       const updated = await tx.reimbursement.update({
         where: { id },
@@ -401,8 +443,8 @@ export class ReimbursementService {
       throw new AppError('Acesso negado', 403);
     }
 
-    if (reimbursement.status !== 'DRAFT' && reimbursement.status !== 'SUBMITTED') {
-      throw new AppError('Anexos só podem ser adicionados a reembolsos em DRAFT ou SUBMITTED', 400);
+    if (reimbursement.status !== 'DRAFT') {
+      throw new AppError('Comprovantes só podem ser enviados enquanto a solicitação estiver em RASCUNHO.', 400);
     }
 
     return prisma.$transaction(async (tx) => {

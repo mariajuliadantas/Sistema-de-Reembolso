@@ -1,5 +1,10 @@
 import { prisma } from '../utils/prisma';
 import { AppError } from '../utils/AppError';
+import type { z } from 'zod';
+import type { createCategorySchema, updateCategorySchema } from '../schemas/categorySchema';
+
+type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 
 export class CategoryService {
   async getAll() {
@@ -15,7 +20,7 @@ export class CategoryService {
     });
   }
 
-  async create(data: { name: string; active?: boolean }) {
+  async create(data: CreateCategoryInput) {
     const existingCategory = await prisma.category.findUnique({
       where: { name: data.name }
     });
@@ -28,11 +33,12 @@ export class CategoryService {
       data: {
         name: data.name,
         active: data.active !== undefined ? data.active : true,
+        maxAmount: data.maxAmount ?? null,
       }
     });
   }
 
-  async update(id: string, data: { name?: string; active?: boolean }) {
+  async update(id: string, data: UpdateCategoryInput) {
     const category = await prisma.category.findUnique({ where: { id } });
     if (!category) {
       throw new AppError('Categoria não encontrada', 404);
@@ -49,7 +55,11 @@ export class CategoryService {
 
     return prisma.category.update({
       where: { id },
-      data
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.active !== undefined && { active: data.active }),
+        ...(data.maxAmount !== undefined && { maxAmount: data.maxAmount }),
+      },
     });
   }
 }

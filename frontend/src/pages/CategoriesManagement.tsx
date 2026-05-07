@@ -1,5 +1,19 @@
-import { Box, Heading, Text, Button, Table, Skeleton, Stack, Flex, VStack, Center, Input, HStack, Switch } from '@chakra-ui/react';
-import { useState } from 'react';
+import {
+  Box,
+  Heading,
+  Text,
+  Button,
+  Table,
+  Skeleton,
+  Stack,
+  Flex,
+  VStack,
+  Center,
+  Input,
+  HStack,
+  Switch,
+} from '@chakra-ui/react';
+import { useState, useMemo } from 'react';
 import type { AxiosError } from 'axios';
 import { useCategories, useCreateCategory, useUpdateCategory } from '../hooks/useCategories';
 import { Plus } from 'lucide-react';
@@ -13,7 +27,20 @@ const CategoriesManagement = () => {
   const createCategoryMutation = useCreateCategory();
   const updateCategoryMutation = useUpdateCategory();
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryMax, setNewCategoryMax] = useState('');
+  const [limitDraftOverrides, setLimitDraftOverrides] = useState<Record<string, string>>({});
   const [actionError, setActionError] = useState('');
+
+  const limitDraft = useMemo(() => {
+    if (!categories) {
+      return {};
+    }
+    const base: Record<string, string> = {};
+    for (const c of categories) {
+      base[c.id] = c.maxAmount != null && c.maxAmount !== undefined ? String(c.maxAmount) : '';
+    }
+    return { ...base, ...limitDraftOverrides };
+  }, [categories, limitDraftOverrides]);
 
   if (isLoading) {
     return (
@@ -45,10 +72,26 @@ const CategoriesManagement = () => {
       return;
     }
 
+    let maxAmount: number | null | undefined;
+    const maxRaw = newCategoryMax.trim();
+    if (maxRaw !== '') {
+      const n = Number(maxRaw);
+      if (!Number.isFinite(n) || n <= 0) {
+        setActionError('Limite inválido (número positivo ou deixe vazio para sem limite).');
+        return;
+      }
+      maxAmount = n;
+    }
+
     setActionError('');
     try {
-      await createCategoryMutation.mutateAsync({ name: newCategoryName.trim(), active: true });
+      await createCategoryMutation.mutateAsync({
+        name: newCategoryName.trim(),
+        active: true,
+        ...(maxAmount !== undefined ? { maxAmount } : {}),
+      });
       setNewCategoryName('');
+      setNewCategoryMax('');
     } catch (err) {
       const ax = err as AxiosError<ApiErrorBody>;
       setActionError(
@@ -68,22 +111,68 @@ const CategoriesManagement = () => {
     }
   };
 
+  const saveCategoryLimit = async (id: string) => {
+    const raw = (limitDraft[id] ?? '').trim();
+    if (raw !== '') {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n <= 0) {
+        setActionError('Limite inválido (número positivo ou vazio para sem limite).');
+        return;
+      }
+    }
+
+    setActionError('');
+    try {
+      const maxAmount = raw === '' ? null : Number(raw);
+      await updateCategoryMutation.mutateAsync({ id, payload: { maxAmount } });
+      setLimitDraftOverrides((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } catch (err) {
+      const ax = err as AxiosError<ApiErrorBody>;
+      setActionError(ax.response?.data?.message || 'Não foi possível salvar o limite.');
+    }
+  };
+
   return (
     <>
       <Flex justify="space-between" align="center" mb={8}>
         <Box>
-          <Heading size="lg" letterSpacing="tight">Gestão de Categorias</Heading>
-          <Text color="fg.muted">Gerencie as categorias de despesas permitidas.</Text>
+          <Heading size="lg" letterSpacing="tight">
+            Gestão de Categorias
+          </Heading>
+          <Text color="fg.muted">Gerencie as categorias de despesas permitidas e o valor máximo por solicitação.</Text>
         </Box>
       </Flex>
 
-      <HStack mb={4}>
-        <Input
-          placeholder="Nome da nova categoria"
-          value={newCategoryName}
-          onChange={(event) => setNewCategoryName(event.target.value)}
-          bg="white"
-        />
+      <HStack mb={2} flexWrap="wrap" gap={3} align="flex-end">
+        <Box minW="200px" flex="1">
+          <Text fontSize="sm" mb={1} fontWeight="medium">
+            Nome
+          </Text>
+          <Input
+            placeholder="Nome da nova categoria"
+            value={newCategoryName}
+            onChange={(event) => setNewCategoryName(event.target.value)}
+            bg="white"
+          />
+        </Box>
+        <Box w={{ base: 'full', md: '140px' }}>
+          <Text fontSize="sm" mb={1} fontWeight="medium">
+            Limite (R$)
+          </Text>
+          <Input
+            placeholder="Sem limite"
+            type="number"
+            step="0.01"
+            min={0}
+            value={newCategoryMax}
+            onChange={(event) => setNewCategoryMax(event.target.value)}
+            bg="white"
+          />
+        </Box>
         <Button
           type="button"
           colorPalette="brand"
@@ -95,6 +184,10 @@ const CategoriesManagement = () => {
           Nova Categoria
         </Button>
       </HStack>
+      <Text fontSize="xs" color="fg.muted" mb={4}>
+        Deixe &quot;Limite&quot; vazio para não aplicar teto por categoria. O bloqueio de despesas futuras e a exigência de
+        comprovante acima de um valor são validados no envio da solicitação.
+      </Text>
       {actionError ? (
         <Text color="red.500" mb={4}>
           {actionError}
@@ -106,6 +199,7 @@ const CategoriesManagement = () => {
           <Table.Header bg="bg.subtle">
             <Table.Row>
               <Table.ColumnHeader>Nome</Table.ColumnHeader>
+              <Table.ColumnHeader>Limite (R$)</Table.ColumnHeader>
               <Table.ColumnHeader>Status</Table.ColumnHeader>
               <Table.ColumnHeader textAlign="right">Ações</Table.ColumnHeader>
             </Table.Row>
@@ -114,6 +208,35 @@ const CategoriesManagement = () => {
             {categories?.map((cat) => (
               <Table.Row key={cat.id}>
                 <Table.Cell fontWeight="medium">{cat.name}</Table.Cell>
+                <Table.Cell>
+                  <HStack gap={2}>
+                    <Input
+                      w="120px"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      size="sm"
+                      bg="white"
+                      placeholder="—"
+                      value={limitDraft[cat.id] ?? ''}
+                      onChange={(e) =>
+                        setLimitDraftOverrides((prev) => ({
+                          ...prev,
+                          [cat.id]: e.target.value,
+                        }))
+                      }
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      loading={updateCategoryMutation.isPending}
+                      onClick={() => saveCategoryLimit(cat.id)}
+                    >
+                      Salvar limite
+                    </Button>
+                  </HStack>
+                </Table.Cell>
                 <Table.Cell color={cat.active ? 'green.600' : 'gray.500'}>
                   {cat.active ? 'Ativa' : 'Inativa'}
                 </Table.Cell>

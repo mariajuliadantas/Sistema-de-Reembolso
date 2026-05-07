@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { ReimbursementController } from '../controllers/reimbursement.controller';
 import { authMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
 import { uploadAttachment } from '../middlewares/uploadAttachment.middleware';
@@ -22,9 +22,18 @@ reimbursementRoutes.post('/:id/reject', reimbursementController.reject);
 reimbursementRoutes.post('/:id/pay', reimbursementController.pay);
 reimbursementRoutes.post('/:id/cancel', reimbursementController.cancel);
 
+const uploadAttachmentMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  uploadAttachment.single('file')(req, res, (err) => {
+    if (err) {
+      return next(err);
+    }
+    next();
+  });
+};
+
 reimbursementRoutes.post(
   '/:id/attachments',
-  uploadAttachment.single('file'),
+  uploadAttachmentMiddleware,
   reimbursementController.addAttachment,
 );
 reimbursementRoutes.get('/:id/attachments', reimbursementController.getAttachments);

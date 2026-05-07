@@ -10,6 +10,8 @@ export interface Category {
   id: string;
   name: string;
   active: boolean;
+  /** Limite máximo por solicitação nesta categoria (null = sem limite) */
+  maxAmount?: number | null;
   createdAt: string;
   updatedAt: string;
 }
