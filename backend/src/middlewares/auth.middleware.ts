@@ -7,8 +7,9 @@ dotenv.config();
 
 interface JwtPayload {
   id: string;
-  email: string;
-  role: string;
+  email?: string;
+  role?: string;
+  typ?: string;
 }
 
 // Popula req.user quando houver Bearer válido; não responde erro se ausente/inválido
@@ -26,6 +27,9 @@ export const optionalAuthMiddleware = (req: Request, _res: Response, next: NextF
     }
 
     const decoded = jwt.verify(token, secret) as JwtPayload;
+    if (decoded.typ === 'refresh' || !decoded.email || !decoded.role) {
+      return next();
+    }
     req.user = {
       id: decoded.id,
       email: decoded.email,
@@ -52,6 +56,14 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
     }
 
     const decoded = jwt.verify(token, secret) as JwtPayload;
+
+    if (decoded.typ === 'refresh') {
+      return sendError(res, 401, 'Token de acesso inválido: use o endpoint de refresh');
+    }
+
+    if (!decoded.email || !decoded.role) {
+      return sendError(res, 401, 'Token inválido ou expirado');
+    }
 
     req.user = {
       id: decoded.id,

@@ -6,6 +6,7 @@ const getErrorName = (statusCode: number) => {
   if (statusCode === 403) return 'Forbidden';
   if (statusCode === 404) return 'Not Found';
   if (statusCode === 409) return 'Conflict';
+  if (statusCode === 502) return 'Bad Gateway';
   return 'Internal Server Error';
 };
 

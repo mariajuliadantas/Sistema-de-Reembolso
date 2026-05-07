@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.routes';
 import categoryRoutes from './routes/category.routes';
 import reimbursementRoutes from './routes/reimbursement.routes';
 import userRoutes from './routes/user.routes';
+import demoRoutes from './routes/demo.routes';
 import { authMiddleware, roleMiddleware } from './middlewares/auth.middleware';
 import { sendError } from './utils/httpResponse';
 
@@ -26,6 +27,7 @@ app.get('/', (req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/demo', demoRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/reimbursements', reimbursementRoutes);

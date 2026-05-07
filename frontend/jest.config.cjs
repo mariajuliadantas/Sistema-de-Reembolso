@@ -14,7 +14,7 @@ module.exports = {
           jsx: 'react-jsx',
           esModuleInterop: true,
           verbatimModuleSyntax: false,
-          types: ['jest', 'node'],
+          types: ['jest', 'node', '@testing-library/jest-dom'],
         },
       },
     ],

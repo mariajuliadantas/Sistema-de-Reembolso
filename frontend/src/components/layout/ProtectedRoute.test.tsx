@@ -11,6 +11,7 @@ const renderWithAuth = (isAuthenticated: boolean) => {
           ? { id: '1', name: 'User', email: 'user@test.com', role: 'COLLABORATOR' }
           : null,
         token: isAuthenticated ? 'token' : null,
+        refreshToken: isAuthenticated ? 'refresh' : null,
         login: jest.fn(),
         logout: jest.fn(),
         isAuthenticated,

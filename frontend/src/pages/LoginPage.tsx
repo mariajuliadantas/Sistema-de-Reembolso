@@ -14,6 +14,7 @@ import {
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import LoginExternalApiDemo from '../components/LoginExternalApiDemo';
 
 interface ApiErrorResponse {
   message?: string;
@@ -35,9 +36,9 @@ const LoginPage = () => {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { user, token } = response.data;
+      const { user, token, refreshToken } = response.data;
 
-      login(user, token);
+      login(user, token, refreshToken);
       navigate('/');
     } catch (err) {
       const error = err as AxiosError<ApiErrorResponse>;
@@ -108,6 +109,7 @@ const LoginPage = () => {
               </Button>
             </Stack>
           </form>
+          <LoginExternalApiDemo />
         </VStack>
       </Box>
     </Container>
