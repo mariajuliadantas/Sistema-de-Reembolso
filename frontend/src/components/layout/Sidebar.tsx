@@ -1,9 +1,8 @@
-import { Box, VStack, Text, Icon, Heading, Flex, HStack } from '@chakra-ui/react';
+import { Box, VStack, Text, Icon, HStack } from '@chakra-ui/react';
 import { NavLink as RouterNavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   PlusCircle, 
-  History,
   Tags,
   Users,
   type LucideIcon,
@@ -41,13 +40,6 @@ const Sidebar = () => {
 
   return (
     <Box h="full" p={5}>
-      <Flex mb={10} alignItems="center" gap={2}>
-        <Box bg="brand.500" p={2} borderRadius="lg">
-          <History color="white" size={24} />
-        </Box>
-        <Heading size="md" letterSpacing="tight">ReembolsoApp</Heading>
-      </Flex>
-
       <VStack align="start" gap={2}>
         <Text fontSize="xs" fontWeight="bold" color="fg.muted" mb={2} textTransform="uppercase">
           Menu Principal

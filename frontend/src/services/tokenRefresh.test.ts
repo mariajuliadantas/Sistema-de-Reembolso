@@ -1,9 +1,8 @@
 import { shouldAttemptRefreshForUrl } from './tokenRefresh';
 
 describe('shouldAttemptRefreshForUrl', () => {
-  it('retorna false para login e register', () => {
+  it('retorna false para login', () => {
     expect(shouldAttemptRefreshForUrl('/auth/login')).toBe(false);
-    expect(shouldAttemptRefreshForUrl('/api/auth/register')).toBe(false);
   });
 
   it('retorna false para refresh', () => {

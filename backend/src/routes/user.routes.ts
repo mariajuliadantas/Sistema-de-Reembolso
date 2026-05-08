@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware, optionalAuthMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
+import { authMiddleware, roleMiddleware } from '../middlewares/auth.middleware';
 import { createUserSchema, updateUserSchema } from '../schemas/user.schema';
 import { sendError } from '../utils/httpResponse';
 import { handleHttpError } from '../utils/errorHandler';
@@ -8,21 +8,11 @@ import { UserService } from '../services/UserService';
 const router = Router();
 const userService = new UserService();
 
-router.use(optionalAuthMiddleware);
-
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authMiddleware, roleMiddleware(['ADMIN']), async (req: Request, res: Response) => {
   try {
-    const isAdmin = req.user?.role === 'ADMIN';
-    const parsedData = isAdmin
-      ? createUserSchema.safeParse(req.body)
-      : createUserSchema.omit({ role: true }).safeParse(req.body);
-
+    const parsedData = createUserSchema.safeParse(req.body);
     if (!parsedData.success) {
       return sendError(res, 400, parsedData.error.issues[0]?.message || 'Dados inválidos');
-    }
-
-    if (!isAdmin && req.body?.role !== undefined) {
-      return sendError(res, 403, 'Apenas administradores podem definir o perfil do usuário');
     }
 
     const user = await userService.create(parsedData.data);

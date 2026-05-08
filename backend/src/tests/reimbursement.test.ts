@@ -46,11 +46,15 @@ describe('Fluxo de Reembolso', () => {
     });
     adminToken = adminLogin.body.token;
 
-    await request(app).post('/api/auth/register').send({
-      name: 'Second Collaborator',
-      email: 'collaborator2@test.com',
-      password: 'admin123',
-    });
+    await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Second Collaborator',
+        email: 'collaborator2@test.com',
+        password: 'admin123',
+        role: 'COLLABORATOR',
+      });
 
     const secondCollabLogin = await request(app).post('/api/auth/login').send({
       email: 'collaborator2@test.com',

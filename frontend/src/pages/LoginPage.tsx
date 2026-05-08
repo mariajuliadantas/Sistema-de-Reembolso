@@ -7,14 +7,12 @@ import {
   Heading, 
   Input, 
   Stack, 
-  Text, 
-  Link,
+  Text,
   VStack
 } from '@chakra-ui/react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
-import LoginExternalApiDemo from '../components/LoginExternalApiDemo';
 
 interface ApiErrorResponse {
   message?: string;
@@ -61,10 +59,7 @@ const LoginPage = () => {
       >
         <VStack gap="6" align="stretch">
           <Stack gap="2" textAlign="center">
-            <Heading size="md">Faça login na sua conta</Heading>
-            <Text color="fg.muted">
-              Não tem uma conta? <Link asChild color="brand.500"><RouterLink to="/register">Cadastre-se</RouterLink></Link>
-            </Text>
+            <Heading size="md">Faça login na sua conta</Heading>          
           </Stack>
 
           <form onSubmit={handleSubmit}>
@@ -109,7 +104,6 @@ const LoginPage = () => {
               </Button>
             </Stack>
           </form>
-          <LoginExternalApiDemo />
         </VStack>
       </Box>
     </Container>

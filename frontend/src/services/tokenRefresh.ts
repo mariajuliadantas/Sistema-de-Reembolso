@@ -5,7 +5,7 @@ export function shouldAttemptRefreshForUrl(url: string | undefined): boolean {
   if (!url) {
     return false;
   }
-  if (url.includes('/auth/login') || url.includes('/auth/register')) {
+  if (url.includes('/auth/login')) {
     return false;
   }
   if (url.includes('/auth/refresh')) {

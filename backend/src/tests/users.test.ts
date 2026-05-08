@@ -1,9 +1,8 @@
 import request from 'supertest';
 import app from '../server';
-import { prisma } from '../utils/prisma';
-
-describe('Usuários (CRUD admin + cadastro público)', () => {
+describe('Usuários (CRUD restrito a admin)', () => {
   let adminToken: string;
+  let collaboratorToken: string;
 
   beforeAll(async () => {
     const adminLogin = await request(app).post('/api/auth/login').send({
@@ -11,37 +10,42 @@ describe('Usuários (CRUD admin + cadastro público)', () => {
       password: 'admin123',
     });
     adminToken = adminLogin.body.token;
+
+    const collaboratorLogin = await request(app).post('/api/auth/login').send({
+      email: 'collaborator@test.com',
+      password: 'admin123',
+    });
+    collaboratorToken = collaboratorLogin.body.token;
   });
 
-  it('POST /api/users sem token não permite enviar role', async () => {
-    const email = `public_user_${Date.now()}@test.com`;
+  it('POST /api/users sem token é bloqueado', async () => {
+    const email = `user_no_token_${Date.now()}@test.com`;
     const res = await request(app).post('/api/users').send({
-      name: 'Usuário Público',
+      name: 'Usuário Sem Token',
       email,
       password: 'senha123',
-      role: 'ADMIN',
+      role: 'COLLABORATOR',
     });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /api/users com token de colaborador é bloqueado', async () => {
+    const email = `user_collab_forbidden_${Date.now()}@test.com`;
+    const res = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${collaboratorToken}`)
+      .send({
+        name: 'Usuário Bloqueado',
+        email,
+        password: 'senha123',
+        role: 'COLLABORATOR',
+      });
 
     expect(res.status).toBe(403);
-    expect(res.body.message).toContain('definir o perfil');
-
-    const dbUser = await prisma.user.findUnique({ where: { email } });
-    expect(dbUser).toBeNull();
   });
 
-  it('POST /api/users sem token cria colaborador quando role não é enviada', async () => {
-    const email = `public_user_ok_${Date.now()}@test.com`;
-    const res = await request(app).post('/api/users').send({
-      name: 'Usuário Público',
-      email,
-      password: 'senha123',
-    });
-
-    expect(res.status).toBe(201);
-    expect(res.body.user.role).toBe('COLLABORATOR');
-  });
-
-  it('POST /api/users com token de admin pode definir perfil', async () => {
+  it('POST /api/users com token de admin pode criar usuário e definir perfil', async () => {
     const email = `manager_created_${Date.now()}@test.com`;
     const res = await request(app)
       .post('/api/users')
@@ -55,6 +59,20 @@ describe('Usuários (CRUD admin + cadastro público)', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.user.role).toBe('MANAGER');
+  });
+
+  it('POST /api/users com token de admin e body inválido retorna 400', async () => {
+    const res = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'ad',
+        email: 'invalido',
+        password: '123',
+        role: 'MANAGER',
+      });
+
+    expect(res.status).toBe(400);
   });
 
   it('GET /api/users lista usuários para ADMIN', async () => {

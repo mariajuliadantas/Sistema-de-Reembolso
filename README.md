@@ -1,27 +1,121 @@
-# Sistema de Reembolso
+# Sistema de Reembolso 
 
-Aplicacao fullstack para controle de solicitacoes de reembolso com fluxo por perfil:
+Aplicacao fullstack para gerenciamento de solicitacoes de reembolso corporativo, implementada com regras de negocio por perfil e trilha de auditoria.
 
-- `COLLABORATOR`: cria, edita rascunho, envia e cancela solicitacoes.
-- `MANAGER`: aprova ou rejeita solicitacoes enviadas.
-- `FINANCIAL`: marca solicitacoes aprovadas como pagas.
-- `ADMIN`: gerencia categorias.
+Fluxo por papel:
 
-## Estrutura
+- `COLLABORATOR`: cria, edita em `DRAFT`, envia e cancela solicitacoes proprias.
+- `MANAGER`: aprova ou rejeita solicitacoes `SUBMITTED`.
+- `FINANCIAL`: marca como pago quando a solicitacao esta `APPROVED`.
+- `ADMIN`: gerencia usuarios e categorias.
 
-- `backend`: API REST em Node.js, Express, Prisma e SQLite.
-- `frontend`: interface React com Vite, Chakra UI e React Query.
-- `docker-compose.yml`: stack completa (API + interface + volumes SQLite e uploads).
+---
 
-## Requisitos
+## Sumario
+
+- Stack utilizada
+- Estrutura do projeto
+- Como rodar (Docker e local)
+- Usuarios de teste
+- Funcionalidades implementadas
+- Como rodar os testes
+- Endpoints da API
+- Collection do Postman
+- Diferenciais tecnicos
+- Troubleshooting
+
+## Stack utilizada
+
+### Backend
+
+- Runtime: Node.js + TypeScript
+- Framework: Express
+- Banco: SQLite + Prisma ORM
+- Autenticacao: JWT (access + refresh) + bcrypt
+- Validacao: Zod
+- Upload: Multer
+- Datas: Dayjs
+- Testes: Jest + Supertest
+
+### Frontend
+
+- Framework: React + TypeScript + Vite
+- Roteamento: React Router
+- Estado global: Context API (`AuthContext`)
+- Estado remoto: React Query
+- HTTP: Axios com interceptors (token e refresh)
+- UI: Chakra UI
+- Formularios: React Hook Form + Zod
+- Testes: Jest + React Testing Library
+
+## Estrutura do projeto
+
+```text
+Sistema-de-Reembolso/
+├── backend/
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   ├── seed.ts
+│   │   └── migrations/
+│   └── src/
+│       ├── controllers/
+│       ├── middlewares/
+│       ├── routes/
+│       ├── schemas/
+│       ├── services/
+│       ├── tests/
+│       ├── utils/
+│       ├── app.ts
+│       └── server.ts
+├── frontend/
+│   └── src/
+│       ├── components/
+│       ├── contexts/
+│       ├── hooks/
+│       ├── lib/
+│       ├── pages/
+│       ├── routes/
+│       ├── services/
+│       └── types/
+├── docker-compose.yml
+└── README.md
+```
+
+## Como rodar o projeto
+
+### Opcao A - Docker (recomendado para avaliacao)
+
+Pre-requisito: Docker Desktop (ou Docker Engine + Compose v2).
+
+Na raiz `Sistema-de-Reembolso`:
+
+```bash
+docker compose up --build -d
+docker compose exec backend npm run db:seed
+```
+
+Acessos:
+
+- Frontend: `http://localhost:8080`
+- API: `http://localhost:3000`
+
+Comandos uteis:
+
+```bash
+docker compose up
+docker compose down
+docker compose down -v
+docker compose logs -f backend
+```
+
+### Opcao B - Execucao local (sem Docker)
+
+Pre-requisitos:
 
 - Node.js 22+
 - npm 10+
-- Docker Desktop / Docker Engine + Compose v2 (para subir tudo em containers)
 
-## Execucao local (sem Docker)
-
-### 1) Backend
+Backend:
 
 ```bash
 cd backend
@@ -35,25 +129,7 @@ npm run db:seed
 npm run dev
 ```
 
-API em `http://localhost:3000`.
-
-Credenciais seed (senha: `admin123`):
-
-- `admin@pitang.com` (ADMIN)
-- `colaborador@pitang.com` (COLLABORATOR)
-- `gestor@pitang.com` (MANAGER)
-- `financeiro@pitang.com` (FINANCIAL)
-
-Para modo "start" (build de producao):
-
-```bash
-npm run build
-npm run start
-```
-
-### 2) Frontend
-
-Em outro terminal:
+Frontend (em outro terminal):
 
 ```bash
 cd frontend
@@ -65,100 +141,149 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Frontend em `http://localhost:5173`.
+Acessos locais:
 
-## Docker (stack completa)
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:3000`
 
-Sobe **backend** (porta `3000`), **frontend** com Nginx (porta `8080`) e volumes para **SQLite** (`dev.db`) e **uploads**.
+## Usuarios de teste
 
-```bash
-cd Sistema-de-Reembolso
-# opcional: copie .env.docker.example para .env e ajuste JWT_SECRET / PUBLIC_API_URL
-docker compose up --build -d
-```
+Criados pelo seed de desenvolvimento (`@pitang.com`), senha padrao `admin123`:
 
-- Aplicação: **http://localhost:8080** (Nginx encaminha `/api` e `/uploads` para o backend).
-- API direta (opcional): **http://localhost:3000**.
+- `admin@pitang.com` - `ADMIN`
+- `colaborador@pitang.com` - `COLLABORATOR`
+- `gestor@pitang.com` - `MANAGER`
+- `financeiro@pitang.com` - `FINANCIAL`
 
-Após o **primeiro** `up`, rode o seed (usuários e categorias de exemplo):
+Observacao: os testes automatizados usam outro dataset (`@test.com`) para isolamento.
 
-```bash
-docker compose exec backend npm run db:seed
-```
+## Funcionalidades implementadas
 
-Credenciais seed no Docker (senha: `admin123`):
+- Login com JWT e renovacao por refresh token.
+- Controle de acesso por perfil (RBAC) no backend e no frontend.
+- CRUD de usuarios (somente `ADMIN`).
+- CRUD de categorias (somente `ADMIN`) com `maxAmount`.
+- Fluxo completo de reembolso: `DRAFT -> SUBMITTED -> APPROVED -> PAID`.
+- Rejeicao com justificativa obrigatoria.
+- Cancelamento por colaborador dono em status permitido.
+- Upload de anexos (`PDF/JPG/PNG`, ate 5MB) com validacao.
+- Historico de auditoria por acao (`CREATED`, `UPDATED`, `SUBMITTED`, `APPROVED`, `REJECTED`, `PAID`, `CANCELED`).
+- Regra configuravel: comprovante obrigatorio acima de valor-limiar (`/api/config/reimbursement-rules`).
+- Diferencial de demo externa mantido (`/api/demo` e utilitarios no frontend).
 
-- `admin@pitang.com` (ADMIN)
-- `colaborador@pitang.com` (COLLABORATOR)
-- `gestor@pitang.com` (MANAGER)
-- `financeiro@pitang.com` (FINANCIAL)
+## Como rodar os testes
 
-Variáveis úteis (via arquivo `.env` na raiz ou ambiente do host): `JWT_SECRET`, `PUBLIC_API_URL` (deve bater com a URL que você usa no navegador, ex. `http://localhost:8080`), `REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`. Veja `.env.docker.example`.
-
-## Qualidade
-
-### Backend
+Backend:
 
 ```bash
 cd backend
-npm run build
 npm test
 ```
 
-### Frontend
+Frontend:
 
 ```bash
 cd frontend
 npm run lint
-npm run build
 npm test
 ```
 
-## Endpoints principais
+## Endpoints da API
 
-- `POST /api/users` (cadastro publico: cria `COLLABORATOR`; nao aceita `role` no body; com token `ADMIN`, permite definir `role`)
-- `GET /api/users` (ADMIN)
-- `GET /api/users/:id` (ADMIN)
-- `PUT /api/users/:id` (ADMIN)
-- `DELETE /api/users/:id` (ADMIN)
-- `POST /api/auth/register` (compatibilidade; mesmo fluxo de cadastro colaborador)
-- `POST /api/auth/login`
-- `GET /api/categories/active`
-- `GET /api/categories` (ADMIN)
-- `POST /api/categories` (ADMIN)
-- `PUT /api/categories/:id` (ADMIN)
-- `GET /api/reimbursements`
-- `POST /api/reimbursements`
-- `PUT /api/reimbursements/:id`
-- `POST /api/reimbursements/:id/submit`
-- `POST /api/reimbursements/:id/approve`
-- `POST /api/reimbursements/:id/reject`
-- `POST /api/reimbursements/:id/pay`
-- `POST /api/reimbursements/:id/cancel`
-- `GET /api/reimbursements/:id/attachments`
-- `POST /api/reimbursements/:id/attachments` (multipart `file`; PDF/JPG/PNG ate 5MB)
-- `GET /api/config/reimbursement-rules` (público; limiar de comprovante obrigatório)
-- `GET /api/reimbursements/:id/history`
+Base local: `http://localhost:3000/api`
 
-## Formato de erro (API)
+Autenticacao:
 
-Respostas de erro seguem o padrao:
+- `POST /auth/login`
+- `POST /auth/refresh`
+
+Usuarios (`ADMIN`):
+
+- `GET /users`
+- `GET /users/:id`
+- `POST /users`
+- `PUT /users/:id`
+- `DELETE /users/:id`
+
+Categorias:
+
+- `GET /categories/active` (publico)
+- `GET /categories` (`ADMIN`)
+- `POST /categories` (`ADMIN`)
+- `PUT /categories/:id` (`ADMIN`)
+
+Reembolsos:
+
+- `GET /reimbursements`
+- `POST /reimbursements`
+- `GET /reimbursements/:id`
+- `PUT /reimbursements/:id`
+- `POST /reimbursements/:id/submit`
+- `POST /reimbursements/:id/approve`
+- `POST /reimbursements/:id/reject`
+- `POST /reimbursements/:id/pay`
+- `POST /reimbursements/:id/cancel`
+- `GET /reimbursements/:id/attachments`
+- `POST /reimbursements/:id/attachments`
+- `GET /reimbursements/:id/history`
+
+Configuracao/Demo:
+
+- `GET /config/reimbursement-rules` (publico)
+- `GET /demo/external-post` (publico)
+
+Formato de erro padrao:
 
 `{ "message": string, "statusCode": number, "error": string }`
 
-## Uploads
+## Collection do Postman
 
-- Arquivos ficam em `backend/uploads` (no Docker: volume `backend_uploads`) e sao servidos em `GET /uploads/*`.
-- Defina `PUBLIC_API_URL` **sem** `/api` (ex.: `http://localhost:8080` no Compose com Nginx na porta 8080).
+Arquivos versionados no repositorio:
+
+- `postman/Sistema-de-Reembolso.postman_collection.json`
+- `postman/Sistema-de-Reembolso.local.postman_environment.json`
+
+Como usar:
+
+1. Postman -> `Import` -> selecione os 2 arquivos da pasta `postman/`.
+2. Selecione o environment `Sistema de Reembolso - Local`.
+3. Rode os requests de `01 - Auth` para preencher tokens automaticamente.
+4. Rode `02 - Categories -> GET Categories Active` para preencher `categoryId`.
+5. Rode o fluxo de `03 - Reimbursements Flow` (create -> upload opcional -> submit -> approve -> pay -> history).
+
 
 ## Troubleshooting
 
-- Erro `Cannot find module dist/server.js`:
-  - execute `npm run build` no `backend` antes de `npm run start`.
-- Erro de autenticacao JWT:
-  - confira se `JWT_SECRET` esta definido no `.env`.
-- Frontend sem conectar na API:
-  - confira `VITE_API_URL` no `.env` do frontend.
-- Comando `docker` nao encontrado:
-  - instale/inicie o Docker Desktop e reabra o terminal.
+- Frontend nao conecta na API:
+  - confira `VITE_API_URL` no `frontend/.env`.
+- JWT invalido/expirado:
+  - confira `JWT_SECRET` e horario do sistema.
+- Erro no build backend:
+  - rode `npm run build` em `backend` antes de `npm run start`.
+- Docker sem subir:
+  - verifique se Docker Desktop esta iniciado.
+
+## 17. Plus / diferenciais - checklist
+
+- [x] Paginacao - `backend/src/schemas/reimbursementListQuerySchema.ts` (`page`, `limit`) e `backend/src/services/ReimbursementService.ts` (`skip/take` + metadados de pagina).
+- [x] Filtro por status - query `status` em `reimbursementListQuerySchema.ts` aplicada em `ReimbursementService.listExtraAnd(...)`.
+- [x] Filtro por categoria - query `categoryId` em `reimbursementListQuerySchema.ts` aplicada em `ReimbursementService.listExtraAnd(...)`.
+- [x] Busca por colaborador - query `requesterSearch` em `reimbursementListQuerySchema.ts`, com busca por `name`/`email` em `ReimbursementService.listExtraAnd(...)`.
+- [x] Ordenacao por data ou valor - `sortBy`/`sortOrder` no schema de listagem e ordenacao em `ReimbursementService.listOrderBy(...)`.
+- [x] Dashboard com totais - agregacoes (`aggregate` e `groupBy`) em `ReimbursementService.getAll(...)` e exibicao por perfil em `frontend/src/pages/Dashboard.tsx`.
+- [x] Preview/download de anexos - upload/listagem em `POST/GET /api/reimbursements/:id/attachments` e consumo em `frontend/src/pages/ReimbursementDetails.tsx`.
+- [x] Soft delete - usuarios usam `deletedAt` em `backend/prisma/schema.prisma`, aplicado no `UserService` e no login (`auth.routes.ts` filtra `deletedAt: null`).
+- [x] Seeds iniciais - `backend/prisma/seed.ts` cria usuarios base por perfil e categorias iniciais.
+- [x] Collection do Postman - arquivos `postman/Sistema-de-Reembolso.postman_collection.json` e `postman/Sistema-de-Reembolso.local.postman_environment.json`, com scripts para salvar tokens e IDs.
+- [x] Mais testes automatizados no backend - suites em `backend/src/tests/*.test.ts` (auth, users, categories, reimbursements, config, demo e utilitarios).
+- [x] Mais testes automatizados no frontend - suites em `frontend/src/**/*.test.ts(x)` cobrindo rotas protegidas, refresh token e utilitarios.
+- [x] Consumo simples de API externa (sem impactar o escopo principal) - endpoint `GET /api/demo/external-post` em `backend/src/routes/demo.routes.ts` e testes em `backend/src/tests/demo.test.ts`.
+- [x] Refresh token - endpoint `POST /api/auth/refresh` (`backend/src/routes/auth.routes.ts`) + fluxo no interceptor (`frontend/src/services/api.ts` e `tokenRefresh.ts`).
+- [x] Docker Compose - orquestracao em `docker-compose.yml` com backend + frontend + volumes.
+- [x] Upload real de comprovantes - `multer` em `backend/src/middlewares/uploadAttachment.middleware.ts` (PDF/JPG/PNG ate 5MB) e upload via tela de detalhes.
+- [x] Limite de valor configuravel por categoria - campo `maxAmount` em `Category` (`schema.prisma`) validado em `ReimbursementService.assertValueWithinCategoryMax(...)`.
+- [x] Bloqueio de despesas futuras - validacao com `dayjs` em `ReimbursementService.assertExpenseDateNotFuture(...)`.
+- [x] Bloqueio de solicitacao sem anexo acima de determinado valor - regra em `backend/src/utils/reimbursementRules.ts`, aplicada no `submit()` do `ReimbursementService`.
+
+
 

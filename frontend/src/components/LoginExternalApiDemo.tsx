@@ -2,10 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Text, Box } from '@chakra-ui/react';
 import { fetchSampleQuoteWithAxios, fetchSampleTitleWithFetch } from '../lib/externalDemo';
 
-/**
- * Bloco opcional na tela de login: demonstra `fetch` e `axios` contra APIs públicas,
- * sem interferir no fluxo principal de autenticação.
- */
+//demonstra `fetch` e `axios` contra APIs públicas
+ 
 const LoginExternalApiDemo: React.FC = () => {
   const [line, setLine] = useState<string | null>(null);
 
@@ -36,8 +34,8 @@ const LoginExternalApiDemo: React.FC = () => {
   }
 
   return (
-    <Box mt={6} p={3} bg="bg.subtle" borderRadius="md" borderWidth="1px" borderColor="border.muted">
-      <Text fontSize="xs" color="fg.muted" lineHeight="short">
+    <Box mt={6} p={3} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
+      <Text fontSize="xs" color="gray.800" lineHeight="short">
         {line}
       </Text>
     </Box>

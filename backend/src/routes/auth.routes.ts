@@ -3,9 +3,6 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../utils/prisma';
 import { sendError } from '../utils/httpResponse';
-import { UserService } from '../services/UserService';
-import { handleHttpError } from '../utils/errorHandler';
-import { createUserSchema } from '../schemas/user.schema';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/tokenSigning';
 
 const router = Router();
@@ -21,8 +18,6 @@ const refreshSchema = z.object({
     .string({ required_error: 'Refresh token é obrigatório', invalid_type_error: 'Refresh token é obrigatório' })
     .min(1, 'Refresh token é obrigatório'),
 });
-
-const userService = new UserService();
 
 router.post('/login', async (req: Request, res: Response) => {
   try {
@@ -90,27 +85,6 @@ router.post('/refresh', async (req: Request, res: Response) => {
     });
   } catch {
     return sendError(res, 401, 'Refresh token inválido ou expirado');
-  }
-});
-
-router.post('/register', async (req: Request, res: Response) => {
-  try {
-    const parsedData = createUserSchema
-      .pick({ name: true, email: true, password: true })
-      .safeParse(req.body);
-    if (!parsedData.success) {
-      return sendError(res, 400, parsedData.error.issues[0]?.message || 'Dados inválidos');
-    }
-
-    const { name, email, password } = parsedData.data;
-    const user = await userService.create({ name, email, password, role: 'COLLABORATOR' });
-
-    return res.status(201).json({
-      message: 'Conta criada com sucesso',
-      user,
-    });
-  } catch (error) {
-    return handleHttpError(error, res);
   }
 });
 
