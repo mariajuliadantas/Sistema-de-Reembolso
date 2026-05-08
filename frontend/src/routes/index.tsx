@@ -15,11 +15,9 @@ import AppShell from '../components/layout/AppShell';
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/403" element={<Forbidden />} />
 
-      {/* Private Routes */}
       <Route 
         path="/" 
         element={
@@ -86,7 +84,6 @@ const AppRoutes = () => {
         }
       />
       
-      {/* Fallback */}
       <Route path="/404" element={<NotFoundPage />} />
       <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
