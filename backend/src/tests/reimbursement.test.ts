@@ -174,12 +174,12 @@ describe('Fluxo de Reembolso', () => {
     });
   });
 
-  describe('Editar (PATCH /api/reimbursements/:id)', () => {
+  describe('Editar (PUT /api/reimbursements/:id)', () => {
     it('deve permitir edição de reembolso próprio em DRAFT', async () => {
       const reimbursementId = await createDraft();
 
       const response = await request(app)
-        .patch(`/api/reimbursements/${reimbursementId}`)
+        .put(`/api/reimbursements/${reimbursementId}`)
         .set('Authorization', `Bearer ${collaboratorToken}`)
         .send({
           description: 'Despesa alterada',
@@ -196,7 +196,7 @@ describe('Fluxo de Reembolso', () => {
       const reimbursementId = await createDraft();
 
       const response = await request(app)
-        .patch(`/api/reimbursements/${reimbursementId}`)
+        .put(`/api/reimbursements/${reimbursementId}`)
         .set('Authorization', `Bearer ${secondCollaboratorToken}`)
         .send({ description: 'Tentativa indevida' });
 
@@ -210,7 +210,7 @@ describe('Fluxo de Reembolso', () => {
         .set('Authorization', `Bearer ${collaboratorToken}`);
 
       const response = await request(app)
-        .patch(`/api/reimbursements/${reimbursementId}`)
+        .put(`/api/reimbursements/${reimbursementId}`)
         .set('Authorization', `Bearer ${collaboratorToken}`)
         .send({ description: 'Não deveria editar submetido' });
 
@@ -219,7 +219,7 @@ describe('Fluxo de Reembolso', () => {
 
     it('deve retornar 404 ao editar inexistente', async () => {
       const response = await request(app)
-        .patch(`/api/reimbursements/${NON_EXISTENT_ID}`)
+        .put(`/api/reimbursements/${NON_EXISTENT_ID}`)
         .set('Authorization', `Bearer ${collaboratorToken}`)
         .send({ description: 'Não existe' });
 

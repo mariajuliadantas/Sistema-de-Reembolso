@@ -1,8 +1,8 @@
 node_modules
 dist
+uploads
 .env
-.env.test
-coverage
-npm-debug.log*
-yarn-error.log*
+.env.*
 *.db
+coverage
+.git

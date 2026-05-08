@@ -37,6 +37,7 @@ const SidebarItem = ({ icon, label, to }: SidebarItemProps) => (
 const Sidebar = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const canCreateReimbursement = user?.role === 'COLLABORATOR';
 
   return (
     <Box h="full" p={5}>
@@ -52,7 +53,9 @@ const Sidebar = () => {
           Menu Principal
         </Text>
         <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/" />
-        <SidebarItem icon={PlusCircle} label="Novo Reembolso" to="/reimbursements/new" />
+        {canCreateReimbursement ? (
+          <SidebarItem icon={PlusCircle} label="Novo Reembolso" to="/reimbursements/new" />
+        ) : null}
         
         {isAdmin && (
           <>

@@ -11,13 +11,13 @@ Aplicacao fullstack para controle de solicitacoes de reembolso com fluxo por per
 
 - `backend`: API REST em Node.js, Express, Prisma e SQLite.
 - `frontend`: interface React com Vite, Chakra UI e React Query.
-- `docker-compose.yml`: containerização apenas do SQLite.
+- `docker-compose.yml`: stack completa (API + interface + volumes SQLite e uploads).
 
 ## Requisitos
 
 - Node.js 22+
 - npm 10+
-- Docker Desktop (opcional, para execucao containerizada)
+- Docker Desktop / Docker Engine + Compose v2 (para subir tudo em containers)
 
 ## Execucao local (sem Docker)
 
@@ -26,12 +26,23 @@ Aplicacao fullstack para controle de solicitacoes de reembolso com fluxo por per
 ```bash
 cd backend
 npm install
+# Linux/macOS
 cp .env.example .env
+# Windows PowerShell
+Copy-Item .env.example .env
 npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
 API em `http://localhost:3000`.
+
+Credenciais seed (senha: `admin123`):
+
+- `admin@pitang.com` (ADMIN)
+- `colaborador@pitang.com` (COLLABORATOR)
+- `gestor@pitang.com` (MANAGER)
+- `financeiro@pitang.com` (FINANCIAL)
 
 Para modo "start" (build de producao):
 
@@ -47,22 +58,42 @@ Em outro terminal:
 ```bash
 cd frontend
 npm install
+# Linux/macOS
 cp .env.example .env
+# Windows PowerShell
+Copy-Item .env.example .env
 npm run dev
 ```
 
 Frontend em `http://localhost:5173`.
 
-## Docker (somente banco SQLite)
+## Docker (stack completa)
 
-Para manter apenas o banco em container:
+Sobe **backend** (porta `3000`), **frontend** com Nginx (porta `8080`) e volumes para **SQLite** (`dev.db`) e **uploads**.
 
 ```bash
-docker compose up -d
+cd Sistema-de-Reembolso
+# opcional: copie .env.docker.example para .env e ajuste JWT_SECRET / PUBLIC_API_URL
+docker compose up --build -d
 ```
 
-O serviço `sqlite-db` mantém o arquivo `dev.db` em volume nomeado (`sqlite_data`) e também em `./database`.
-Backend e frontend continuam rodando localmente.
+- Aplicação: **http://localhost:8080** (Nginx encaminha `/api` e `/uploads` para o backend).
+- API direta (opcional): **http://localhost:3000**.
+
+Após o **primeiro** `up`, rode o seed (usuários e categorias de exemplo):
+
+```bash
+docker compose exec backend npm run db:seed
+```
+
+Credenciais seed no Docker (senha: `admin123`):
+
+- `admin@pitang.com` (ADMIN)
+- `colaborador@pitang.com` (COLLABORATOR)
+- `gestor@pitang.com` (MANAGER)
+- `financeiro@pitang.com` (FINANCIAL)
+
+Variáveis úteis (via arquivo `.env` na raiz ou ambiente do host): `JWT_SECRET`, `PUBLIC_API_URL` (deve bater com a URL que você usa no navegador, ex. `http://localhost:8080`), `REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`. Veja `.env.docker.example`.
 
 ## Qualidade
 
@@ -95,17 +126,18 @@ npm test
 - `GET /api/categories/active`
 - `GET /api/categories` (ADMIN)
 - `POST /api/categories` (ADMIN)
-- `PUT /api/categories/:id` (ADMIN) (`PATCH` ainda aceito)
+- `PUT /api/categories/:id` (ADMIN)
 - `GET /api/reimbursements`
 - `POST /api/reimbursements`
-- `PUT /api/reimbursements/:id` (`PATCH` ainda aceito)
+- `PUT /api/reimbursements/:id`
 - `POST /api/reimbursements/:id/submit`
 - `POST /api/reimbursements/:id/approve`
 - `POST /api/reimbursements/:id/reject`
 - `POST /api/reimbursements/:id/pay`
 - `POST /api/reimbursements/:id/cancel`
 - `GET /api/reimbursements/:id/attachments`
-- `POST /api/reimbursements/:id/attachments` (multipart `file`; PDF/JPG/PNG ate 5MB; tambem aceita JSON legado com `fileName`, `fileUrl`, `fileType`)
+- `POST /api/reimbursements/:id/attachments` (multipart `file`; PDF/JPG/PNG ate 5MB)
+- `GET /api/config/reimbursement-rules` (público; limiar de comprovante obrigatório)
 - `GET /api/reimbursements/:id/history`
 
 ## Formato de erro (API)
@@ -116,8 +148,8 @@ Respostas de erro seguem o padrao:
 
 ## Uploads
 
-- Arquivos ficam em `backend/uploads` e sao servidos em `GET /uploads/*`.
-- Para URLs publicas corretas nos anexos, defina `PUBLIC_API_URL` no `.env` do backend (ex.: `http://localhost:3000`, **sem** `/api`).
+- Arquivos ficam em `backend/uploads` (no Docker: volume `backend_uploads`) e sao servidos em `GET /uploads/*`.
+- Defina `PUBLIC_API_URL` **sem** `/api` (ex.: `http://localhost:8080` no Compose com Nginx na porta 8080).
 
 ## Troubleshooting
 
@@ -129,3 +161,4 @@ Respostas de erro seguem o padrao:
   - confira `VITE_API_URL` no `.env` do frontend.
 - Comando `docker` nao encontrado:
   - instale/inicie o Docker Desktop e reabra o terminal.
+

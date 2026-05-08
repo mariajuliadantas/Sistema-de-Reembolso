@@ -11,9 +11,7 @@ reimbursementRoutes.use(authMiddleware);
 reimbursementRoutes.get('/', reimbursementController.getAll);
 reimbursementRoutes.get('/:id', reimbursementController.getById);
 reimbursementRoutes.post('/', roleMiddleware(['COLLABORATOR']), reimbursementController.create);
-reimbursementRoutes.patch('/:id', reimbursementController.update);
 reimbursementRoutes.put('/:id', reimbursementController.update);
-reimbursementRoutes.delete('/:id', reimbursementController.cancel);
 
 //Fluxo
 reimbursementRoutes.post('/:id/submit', reimbursementController.submit);

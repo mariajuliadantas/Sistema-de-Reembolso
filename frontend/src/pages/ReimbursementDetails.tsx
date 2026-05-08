@@ -1,4 +1,4 @@
-import { Box, Heading, Text, Button, Flex, Grid, GridItem, VStack, HStack, Icon, Separator, Skeleton, Center, Input } from '@chakra-ui/react';
+import { Box, Heading, Text, Button, Flex, Grid, GridItem, VStack, HStack, Icon, Separator, Skeleton, Center, Input, Textarea } from '@chakra-ui/react';
 import { useRef, useState } from 'react';
 import type { AxiosError } from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -39,6 +39,9 @@ const ReimbursementDetails = () => {
   const addAttachmentMutation = useAddReimbursementAttachment();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attachmentError, setAttachmentError] = useState('');
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
 
   const canEdit =
     user?.role === 'COLLABORATOR' &&
@@ -97,15 +100,31 @@ const ReimbursementDetails = () => {
     }
   };
 
-  const handleReject = async () => {
-    const reason = window.prompt('Informe o motivo da rejeição (mínimo 5 caracteres):');
-    if (!reason || reason.trim().length < 5) {
+  const openRejectModal = () => {
+    setRejectReason('');
+    setRejectError('');
+    setIsRejectModalOpen(true);
+  };
+
+  const closeRejectModal = () => {
+    setIsRejectModalOpen(false);
+    setRejectReason('');
+    setRejectError('');
+  };
+
+  const handleConfirmReject = async () => {
+    const reason = rejectReason.trim();
+    if (reason.length < 5) {
+      setRejectError('Informe um motivo com pelo menos 5 caracteres.');
       return;
     }
+
     try {
-      await rejectMutation.mutateAsync({ id: id!, reason: reason.trim() });
+      await rejectMutation.mutateAsync({ id: id!, reason });
+      closeRejectModal();
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
+      setRejectError('Não foi possível rejeitar a solicitação. Tente novamente.');
     }
   };
 
@@ -276,7 +295,7 @@ const ReimbursementDetails = () => {
                       colorPalette="red"
                       flex="1"
                       loading={rejectMutation.isPending}
-                      onClick={handleReject}
+                      onClick={openRejectModal}
                     >
                       Rejeitar
                     </Button>
@@ -321,6 +340,60 @@ const ReimbursementDetails = () => {
           </Box>
         </GridItem>
       </Grid>
+
+      {isRejectModalOpen ? (
+        <Box
+          position="fixed"
+          inset={0}
+          bg="blackAlpha.600"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          zIndex={1400}
+          p={4}
+        >
+          <Box
+            w="full"
+            maxW="560px"
+            bg="white"
+            borderRadius="xl"
+            boxShadow="xl"
+            border="1px solid"
+            borderColor="border.muted"
+            p={6}
+          >
+            <Heading size="sm" mb={3}>Rejeitar Solicitação</Heading>
+            <Text fontSize="sm" color="fg.muted" mb={4}>
+              Informe o motivo da rejeição (mínimo 5 caracteres). Esse texto será salvo no histórico.
+            </Text>
+            <Textarea
+              value={rejectReason}
+              onChange={(event) => {
+                setRejectReason(event.target.value);
+                if (rejectError) setRejectError('');
+              }}
+              placeholder="Ex.: Nota ilegível ou documento incompleto"
+              rows={4}
+              bg="white"
+            />
+            {rejectError ? (
+              <Text color="red.500" fontSize="sm" mt={2}>{rejectError}</Text>
+            ) : null}
+            <HStack justify="flex-end" mt={5}>
+              <Button variant="ghost" onClick={closeRejectModal} disabled={rejectMutation.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                colorPalette="red"
+                onClick={handleConfirmReject}
+                loading={rejectMutation.isPending}
+              >
+                Confirmar rejeição
+              </Button>
+            </HStack>
+          </Box>
+        </Box>
+      ) : null}
     </Box>
   );
 };

@@ -11,7 +11,6 @@ categoryRoutes.get('/', roleMiddleware(['ADMIN']), categoryController.getAll);
 categoryRoutes.get('/active', categoryController.getActive);
 
 categoryRoutes.post('/', roleMiddleware(['ADMIN']), categoryController.create);
-categoryRoutes.patch('/:id', roleMiddleware(['ADMIN']), categoryController.update);
 categoryRoutes.put('/:id', roleMiddleware(['ADMIN']), categoryController.update);
 
 export default categoryRoutes;

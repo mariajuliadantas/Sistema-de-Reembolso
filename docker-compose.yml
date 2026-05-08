@@ -1,11 +1,57 @@
+# Sistema de Reembolso — stack completa
+# Uso: docker compose up --build -d
+# Entrada principal: http://localhost:8080 (Nginx → API em /api e arquivos em /uploads)
+# API direta (opcional): http://localhost:3000
+
 services:
-  sqlite-db:
-    image: keinos/sqlite3:latest
-    container_name: reimbursement-sqlite-db
-    command: sh -c "mkdir -p /data && touch /data/dev.db && tail -f /dev/null"
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: reimbursement-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/data/dev.db
+      JWT_SECRET: ${JWT_SECRET:-docker-dev-change-me-use-openssl-rand}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      JWT_ACCESS_EXPIRES: ${JWT_ACCESS_EXPIRES:-1d}
+      JWT_REFRESH_EXPIRES: ${JWT_REFRESH_EXPIRES:-7d}
+      PORT: "3000"
+      # URL que o navegador usa para abrir anexos (mesmo host que o frontend exposto)
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8080}
+      REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE: ${REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE:-500}
     volumes:
-      - sqlite_data:/data
-      - ./database:/workspace-db
+      - backend_data:/data
+      - backend_uploads:/app/uploads
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: prod
+      args:
+        VITE_API_URL: /api
+    container_name: reimbursement-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
-  sqlite_data:
+  backend_data:
+  backend_uploads:
