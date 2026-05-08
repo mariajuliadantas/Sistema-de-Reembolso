@@ -81,7 +81,16 @@ Sistema-de-Reembolso/
 └── README.md
 ```
 
-## Como rodar o projeto
+## Como rodar o projeto: 
+
+### Antes de qualquer opção (clonar repositório): 
+
+```bash
+git clone https://github.com/mariajuliadantas/Sistema-de-Reembolso.git
+cd Sistema-de-Reembolso
+
+```
+
 
 ### Opcao 1 - Docker (recomendado para avaliação)
 
