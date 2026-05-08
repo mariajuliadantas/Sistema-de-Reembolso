@@ -1,12 +1,12 @@
 # Sistema de Reembolso 
 
-Aplicacao fullstack para gerenciamento de solicitacoes de reembolso corporativo, implementada com regras de negocio por perfil e trilha de auditoria.
+Aplicação fullstack para gerenciamento de solicitações de reembolso corporativo, implementada com regras de negócio por perfil e trilha de auditoria.
 
 Fluxo por papel:
 
 - `COLLABORATOR`: cria, edita em `DRAFT`, envia e cancela solicitacoes proprias.
-- `MANAGER`: aprova ou rejeita solicitacoes `SUBMITTED`.
-- `FINANCIAL`: marca como pago quando a solicitacao esta `APPROVED`.
+- `MANAGER`: aprova ou rejeita solicitações `SUBMITTED`.
+- `FINANCIAL`: marca como pago quando a solicitação esta `APPROVED`.
 - `ADMIN`: gerencia usuarios e categorias.
 
 ---
@@ -83,7 +83,7 @@ Sistema-de-Reembolso/
 
 ## Como rodar o projeto
 
-### Opcao A - Docker (recomendado para avaliacao)
+### Opcao 1 - Docker (recomendado para avaliação)
 
 Pre-requisito: Docker Desktop (ou Docker Engine + Compose v2).
 
@@ -108,7 +108,7 @@ docker compose down -v
 docker compose logs -f backend
 ```
 
-### Opcao B - Execucao local (sem Docker)
+### Opcao 2 - Execução local (sem Docker)
 
 Pre-requisitos:
 
@@ -157,19 +157,6 @@ Criados pelo seed de desenvolvimento (`@pitang.com`), senha padrao `admin123`:
 
 Observacao: os testes automatizados usam outro dataset (`@test.com`) para isolamento.
 
-## Funcionalidades implementadas
-
-- Login com JWT e renovacao por refresh token.
-- Controle de acesso por perfil (RBAC) no backend e no frontend.
-- CRUD de usuarios (somente `ADMIN`).
-- CRUD de categorias (somente `ADMIN`) com `maxAmount`.
-- Fluxo completo de reembolso: `DRAFT -> SUBMITTED -> APPROVED -> PAID`.
-- Rejeicao com justificativa obrigatoria.
-- Cancelamento por colaborador dono em status permitido.
-- Upload de anexos (`PDF/JPG/PNG`, ate 5MB) com validacao.
-- Historico de auditoria por acao (`CREATED`, `UPDATED`, `SUBMITTED`, `APPROVED`, `REJECTED`, `PAID`, `CANCELED`).
-- Regra configuravel: comprovante obrigatorio acima de valor-limiar (`/api/config/reimbursement-rules`).
-- Diferencial de demo externa mantido (`/api/demo` e utilitarios no frontend).
 
 ## Como rodar os testes
 
