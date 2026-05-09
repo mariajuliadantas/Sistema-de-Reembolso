@@ -11,19 +11,6 @@ Fluxo por papel:
 
 ---
 
-## Sumario
-
-- Stack utilizada
-- Estrutura do projeto
-- Como rodar (Docker e local)
-- Usuarios de teste
-- Funcionalidades implementadas
-- Como rodar os testes
-- Endpoints da API
-- Collection do Postman
-- Diferenciais tecnicos
-- Troubleshooting
-
 ## Stack utilizada
 
 ### Backend
@@ -92,7 +79,7 @@ cd Sistema-de-Reembolso
 ```
 
 
-### Opcao 1 - Docker (recomendado para avaliação)
+### Opção 1 - Docker (recomendado para avaliação)
 
 Pre-requisito: Docker Desktop (ou Docker Engine + Compose v2).
 
@@ -117,7 +104,7 @@ docker compose down -v
 docker compose logs -f backend
 ```
 
-### Opcao 2 - Execução local (sem Docker)
+### Opção 2 - Execução local (sem Docker)
 
 Pre-requisitos:
 
@@ -164,20 +151,7 @@ Criados pelo seed de desenvolvimento (`@pitang.com`), senha padrao `admin123`:
 - `gestor@pitang.com` - `MANAGER`
 - `financeiro@pitang.com` - `FINANCIAL`
 
-Observacao: os testes automatizados usam outro dataset (`@test.com`) para isolamento.
-
-## Funcionalidades implementadas
-
-- Login com JWT e renovacao por refresh token.
-- Controle de acesso por perfil (RBAC) no backend e no frontend.
-- CRUD de usuarios (somente `ADMIN`).
-- CRUD de categorias (somente `ADMIN`) com `maxAmount`.
-- Fluxo completo de reembolso: `DRAFT -> SUBMITTED -> APPROVED -> PAID`.
-- Rejeicao com justificativa obrigatoria.
-- Cancelamento por colaborador dono em status permitido.
-- Upload de anexos (`PDF/JPG/PNG`, ate 5MB) com validacao.
-- Historico de auditoria por acao (`CREATED`, `UPDATED`, `SUBMITTED`, `APPROVED`, `REJECTED`, `PAID`, `CANCELED`).
-- Regra configuravel: comprovante obrigatorio acima de valor-limiar (`/api/config/reimbursement-rules`).
+Observação: os testes automatizados usam outro dataset (`@test.com`) para isolamento.
 
 ## Como rodar os testes
 
@@ -200,7 +174,7 @@ npm test
 
 Base local: `http://localhost:3000/api`
 
-Autenticacao:
+Autenticação:
 
 - `POST /auth/login`
 - `POST /auth/refresh`
@@ -261,14 +235,14 @@ Como usar:
 
 ## Troubleshooting
 
-- Frontend nao conecta na API:
+- Frontend não conecta na API:
   - confira `VITE_API_URL` no `frontend/.env`.
 - JWT invalido/expirado:
   - confira `JWT_SECRET` e horario do sistema.
 - Erro no build backend:
   - rode `npm run build` em `backend` antes de `npm run start`.
 - Docker sem subir:
-  - verifique se Docker Desktop esta iniciado.
+  - verifique se Docker Desktop está iniciado.
 
 ## 17. Plus / diferenciais - checklist
 
@@ -290,6 +264,8 @@ Como usar:
 - [x] Limite de valor configuravel por categoria - campo `maxAmount` em `Category` (`schema.prisma`) validado em `ReimbursementService.assertValueWithinCategoryMax(...)`.
 - [x] Bloqueio de despesas futuras - validacao com `dayjs` em `ReimbursementService.assertExpenseDateNotFuture(...)`.
 - [x] Bloqueio de solicitacao sem anexo acima de determinado valor - regra em `backend/src/utils/reimbursementRules.ts`, aplicada no `submit()` do `ReimbursementService`.
+
+Fantando:
 - [ ] Consumo simples de API externa 
 
 
