@@ -244,7 +244,7 @@ Como usar:
 - Docker sem subir:
   - verifique se Docker Desktop está iniciado.
 
-## 17. Plus / diferenciais - checklist
+## Plus / diferenciais - checklist
 
 - [x] Paginacao - `backend/src/schemas/reimbursementListQuerySchema.ts` (`page`, `limit`) e `backend/src/services/ReimbursementService.ts` (`skip/take` + metadados de pagina).
 - [x] Filtro por status - query `status` em `reimbursementListQuerySchema.ts` aplicada em `ReimbursementService.listExtraAnd(...)`.
