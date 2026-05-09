@@ -166,6 +166,18 @@ Criados pelo seed de desenvolvimento (`@pitang.com`), senha padrao `admin123`:
 
 Observacao: os testes automatizados usam outro dataset (`@test.com`) para isolamento.
 
+## Funcionalidades implementadas
+
+- Login com JWT e renovacao por refresh token.
+- Controle de acesso por perfil (RBAC) no backend e no frontend.
+- CRUD de usuarios (somente `ADMIN`).
+- CRUD de categorias (somente `ADMIN`) com `maxAmount`.
+- Fluxo completo de reembolso: `DRAFT -> SUBMITTED -> APPROVED -> PAID`.
+- Rejeicao com justificativa obrigatoria.
+- Cancelamento por colaborador dono em status permitido.
+- Upload de anexos (`PDF/JPG/PNG`, ate 5MB) com validacao.
+- Historico de auditoria por acao (`CREATED`, `UPDATED`, `SUBMITTED`, `APPROVED`, `REJECTED`, `PAID`, `CANCELED`).
+- Regra configuravel: comprovante obrigatorio acima de valor-limiar (`/api/config/reimbursement-rules`).
 
 ## Como rodar os testes
 
@@ -223,10 +235,9 @@ Reembolsos:
 - `POST /reimbursements/:id/attachments`
 - `GET /reimbursements/:id/history`
 
-Configuracao/Demo:
+Configuracao:
 
 - `GET /config/reimbursement-rules` (publico)
-- `GET /demo/external-post` (publico)
 
 Formato de erro padrao:
 
@@ -271,15 +282,15 @@ Como usar:
 - [x] Soft delete - usuarios usam `deletedAt` em `backend/prisma/schema.prisma`, aplicado no `UserService` e no login (`auth.routes.ts` filtra `deletedAt: null`).
 - [x] Seeds iniciais - `backend/prisma/seed.ts` cria usuarios base por perfil e categorias iniciais.
 - [x] Collection do Postman - arquivos `postman/Sistema-de-Reembolso.postman_collection.json` e `postman/Sistema-de-Reembolso.local.postman_environment.json`, com scripts para salvar tokens e IDs.
-- [x] Mais testes automatizados no backend - suites em `backend/src/tests/*.test.ts` (auth, users, categories, reimbursements, config, demo e utilitarios).
+- [x] Mais testes automatizados no backend - suites em `backend/src/tests/*.test.ts` (auth, users, categories, reimbursements, config e utilitarios).
 - [x] Mais testes automatizados no frontend - suites em `frontend/src/**/*.test.ts(x)` cobrindo rotas protegidas, refresh token e utilitarios.
-- [x] Consumo simples de API externa (sem impactar o escopo principal) - endpoint `GET /api/demo/external-post` em `backend/src/routes/demo.routes.ts` e testes em `backend/src/tests/demo.test.ts`.
 - [x] Refresh token - endpoint `POST /api/auth/refresh` (`backend/src/routes/auth.routes.ts`) + fluxo no interceptor (`frontend/src/services/api.ts` e `tokenRefresh.ts`).
 - [x] Docker Compose - orquestracao em `docker-compose.yml` com backend + frontend + volumes.
 - [x] Upload real de comprovantes - `multer` em `backend/src/middlewares/uploadAttachment.middleware.ts` (PDF/JPG/PNG ate 5MB) e upload via tela de detalhes.
 - [x] Limite de valor configuravel por categoria - campo `maxAmount` em `Category` (`schema.prisma`) validado em `ReimbursementService.assertValueWithinCategoryMax(...)`.
 - [x] Bloqueio de despesas futuras - validacao com `dayjs` em `ReimbursementService.assertExpenseDateNotFuture(...)`.
 - [x] Bloqueio de solicitacao sem anexo acima de determinado valor - regra em `backend/src/utils/reimbursementRules.ts`, aplicada no `submit()` do `ReimbursementService`.
+- [ ] Consumo simples de API externa 
 
 
 

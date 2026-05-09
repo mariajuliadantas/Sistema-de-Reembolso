@@ -1,9 +1,17 @@
 // frontend/src/main.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx'; // Note o .tsx
-import './index.css'; // Mantenha o CSS global do Vite
-import { ChakraProvider, createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
+import App from './App.tsx'; 
+import './index.css'; 
+import {
+  ChakraProvider,
+  createSystem,
+  defaultConfig,
+  defineConfig,
+  Toaster,
+  Toast,
+} from '@chakra-ui/react';
+import { toaster } from './lib/toaster';
 import { AuthProvider } from './contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -13,12 +21,11 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5, 
     },
   },
 });
 
-// No Chakra UI v3, as customizações são feitas através de tokens dentro do defineConfig
 const config = defineConfig({
   theme: {
     tokens: {
@@ -48,6 +55,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ChakraProvider value={system}>
         <AuthProvider>
           <App />
+          <Toaster toaster={toaster}>
+            {(toast) => (
+              <Toast.Root>
+                <Toast.Indicator />
+                <Toast.Title>{toast.title}</Toast.Title>
+                {toast.description ? <Toast.Description>{toast.description}</Toast.Description> : null}
+                <Toast.CloseTrigger />
+              </Toast.Root>
+            )}
+          </Toaster>
         </AuthProvider>
       </ChakraProvider>
       <ReactQueryDevtools initialIsOpen={false} />

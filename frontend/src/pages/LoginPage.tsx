@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
-import type { AxiosError } from 'axios';
-import { 
-  Box, 
-  Button, 
-  Container, 
-  Heading, 
-  Input, 
-  Stack, 
-  Text,
-  VStack
+import {
+  Box,
+  Button,
+  Container,
+  Field,
+  Heading,
+  Input,
+  Stack,
+  VStack,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { getApiErrorMessage } from '../lib/apiError';
 import api from '../services/api';
-
-interface ApiErrorResponse {
-  message?: string;
-}
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -39,9 +35,8 @@ const LoginPage = () => {
       login(user, token, refreshToken);
       navigate('/');
     } catch (err) {
-      const error = err as AxiosError<ApiErrorResponse>;
       console.error(err);
-      setError(error.response?.data?.message || 'Ocorreu um erro ao tentar fazer login.');
+      setError(getApiErrorMessage(err, 'Ocorreu um erro ao tentar fazer login.'));
     } finally {
       setIsLoading(false);
     }
@@ -65,33 +60,34 @@ const LoginPage = () => {
           <form onSubmit={handleSubmit}>
             <Stack gap="5">
               <Stack gap="4">
-                <Box>
-                  <Text mb="2" fontWeight="medium">E-mail</Text>
-                  <Input 
-                    type="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
+                <Field.Root invalid={!!error}>
+                  <Field.Label>E-mail</Field.Label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setError('');
+                      setEmail(e.target.value);
+                    }}
                     placeholder="seu@email.com"
                     required
                   />
-                </Box>
-                <Box>
-                  <Text mb="2" fontWeight="medium">Senha</Text>
-                  <Input 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)}
+                </Field.Root>
+                <Field.Root invalid={!!error}>
+                  <Field.Label>Senha</Field.Label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setError('');
+                      setPassword(e.target.value);
+                    }}
                     placeholder="********"
                     required
                   />
-                </Box>
+                  {error ? <Field.ErrorText>{error}</Field.ErrorText> : null}
+                </Field.Root>
               </Stack>
-              
-              {error && (
-                <Text color="red.500" fontSize="sm" textAlign="center">
-                  {error}
-                </Text>
-              )}
 
               <Button 
                 type="submit" 

@@ -472,7 +472,7 @@ describe('Fluxo de Reembolso', () => {
       expect(historyResponse.status).toBe(200);
       const hasAttachmentHistory = historyResponse.body.some(
         (entry: { observation?: string }) =>
-          (entry.observation || '').includes('Attachment added: nota.pdf'),
+          (entry.observation || '').includes('Anexo adicionado: nota.pdf'),
       );
       expect(hasAttachmentHistory).toBe(true);
     });

@@ -3,10 +3,6 @@ import { sendError } from '../utils/httpResponse';
 
 const router = Router();
 
-/**
- * Exemplo mínimo de consumo de API HTTP externa (fetch nativo), fora do escopo principal.
- * Útil para documentação / demonstração; não exige autenticação.
- */
 router.get('/external-post', async (_req: Request, res: Response) => {
   try {
     const upstream = await fetch('https://jsonplaceholder.typicode.com/posts/1');

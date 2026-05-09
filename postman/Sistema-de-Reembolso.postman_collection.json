@@ -535,7 +535,7 @@
       ]
     },
     {
-      "name": "05 - Config and Demo",
+      "name": "05 - Config",
       "item": [
         {
           "name": "GET Reimbursement Rules Config",
@@ -550,23 +550,6 @@
               "path": [
                 "config",
                 "reimbursement-rules"
-              ]
-            }
-          }
-        },
-        {
-          "name": "GET External Demo",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/demo/external-post",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "demo",
-                "external-post"
               ]
             }
           }

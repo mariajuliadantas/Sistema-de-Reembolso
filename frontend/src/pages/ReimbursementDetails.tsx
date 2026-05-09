@@ -1,6 +1,5 @@
 import { Box, Heading, Text, Button, Flex, Grid, GridItem, VStack, HStack, Icon, Separator, Skeleton, Center, Input, Textarea } from '@chakra-ui/react';
-import { useRef, useState } from 'react';
-import type { AxiosError } from 'axios';
+import { useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   useReimbursement,
@@ -19,10 +18,11 @@ import { ArrowLeft, Calendar, Tag, DollarSign, FileText, CheckCircle } from 'luc
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '../lib/reimbursement';
-
-interface ApiErrorBody {
-  message?: string;
-}
+import { formatHistoryObservation, historyActionLabel } from '../lib/reimbursementHistory';
+import { toaster } from '../lib/toaster';
+import { getApiErrorMessage } from '../lib/apiError';
+import { isAttachmentPolicyMessage } from '../lib/reimbursementSubmitGuards';
+import { ActionFeedbackModal } from '../components/shared/ActionFeedbackModal';
 
 const ReimbursementDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,7 +38,25 @@ const ReimbursementDetails = () => {
   const { data: reimbursementRules } = useReimbursementRulesConfig();
   const addAttachmentMutation = useAddReimbursementAttachment();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const attachmentsBlockRef = useRef<HTMLDivElement | null>(null);
   const [attachmentError, setAttachmentError] = useState('');
+  const [workflowError, setWorkflowError] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone: 'danger' | 'warning';
+    attachmentFlow?: boolean;
+  }>({ open: false, title: '', message: '', tone: 'danger' });
+
+  const closeWorkflowError = () => setWorkflowError((s) => ({ ...s, open: false }));
+
+  const focusAttachmentsSection = () => {
+    closeWorkflowError();
+    window.requestAnimationFrame(() => {
+      attachmentsBlockRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => fileInputRef.current?.focus(), 350);
+    });
+  };
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectError, setRejectError] = useState('');
@@ -94,9 +112,14 @@ const ReimbursementDetails = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      toaster.success({
+        title: 'Anexo enviado',
+        description: 'O comprovante foi anexado à solicitação.',
+      });
     } catch (err) {
-      const ax = err as AxiosError<ApiErrorBody>;
-      setAttachmentError(ax.response?.data?.message || 'Não foi possível adicionar o anexo.');
+      const msg = getApiErrorMessage(err, 'Não foi possível adicionar o anexo.');
+      setAttachmentError(msg);
+      toaster.error({ title: 'Falha no anexo', description: msg });
     }
   };
 
@@ -122,11 +145,88 @@ const ReimbursementDetails = () => {
     try {
       await rejectMutation.mutateAsync({ id: id!, reason });
       closeRejectModal();
+      toaster.success({
+        title: 'Solicitação rejeitada',
+        description: 'A solicitação foi marcada como rejeitada e o solicitante será notificado pelo histórico.',
+      });
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
-      setRejectError('Não foi possível rejeitar a solicitação. Tente novamente.');
+      const msg = getApiErrorMessage(error, 'Não foi possível rejeitar a solicitação. Tente novamente.');
+      setRejectError(msg);
+      toaster.error({ title: 'Falha ao rejeitar', description: msg });
     }
   };
+
+  const handleSubmit = useCallback(async () => {
+    if (!reimbursement) return;
+    try {
+      await submitMutation.mutateAsync(reimbursement.id);
+      toaster.success({
+        title: 'Enviado para análise',
+        description: 'A solicitação foi enviada ao gestor.',
+      });
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Verifique anexos obrigatórios e dados da solicitação.');
+      const attachmentFlow = isAttachmentPolicyMessage(message);
+      setWorkflowError({
+        open: true,
+        title: attachmentFlow ? 'Comprovante obrigatório' : 'Não foi possível enviar',
+        message,
+        tone: attachmentFlow ? 'warning' : 'danger',
+        attachmentFlow,
+      });
+    }
+  }, [reimbursement, submitMutation]);
+
+  const handleApprove = useCallback(async () => {
+    if (!reimbursement) return;
+    try {
+      await approveMutation.mutateAsync(reimbursement.id);
+      toaster.success({ title: 'Aprovado', description: 'A solicitação foi aprovada.' });
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Tente novamente.');
+      setWorkflowError({
+        open: true,
+        title: 'Não foi possível aprovar',
+        message,
+        tone: 'danger',
+        attachmentFlow: false,
+      });
+    }
+  }, [reimbursement, approveMutation]);
+
+  const handlePay = useCallback(async () => {
+    if (!reimbursement) return;
+    try {
+      await payMutation.mutateAsync(reimbursement.id);
+      toaster.success({ title: 'Pagamento registrado', description: 'A solicitação foi marcada como paga.' });
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Tente novamente.');
+      setWorkflowError({
+        open: true,
+        title: 'Não foi possível marcar como pago',
+        message,
+        tone: 'danger',
+        attachmentFlow: false,
+      });
+    }
+  }, [reimbursement, payMutation]);
+
+  const handleCancel = useCallback(async () => {
+    if (!reimbursement) return;
+    try {
+      await cancelMutation.mutateAsync(reimbursement.id);
+      toaster.success({ title: 'Cancelado', description: 'A solicitação em rascunho foi cancelada.' });
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'Tente novamente.');
+      setWorkflowError({
+        open: true,
+        title: 'Não foi possível cancelar',
+        message,
+        tone: 'danger',
+        attachmentFlow: false,
+      });
+    }
+  }, [reimbursement, cancelMutation]);
 
   if (isLoading) {
     return (
@@ -211,7 +311,16 @@ const ReimbursementDetails = () => {
               </Box>
             </Box>
 
-            <Box bg="white" p={6} borderRadius="xl" boxShadow="sm" border="1px solid" borderColor="border.muted">
+            <Box
+              ref={attachmentsBlockRef}
+              bg="white"
+              p={6}
+              borderRadius="xl"
+              boxShadow="sm"
+              border="1px solid"
+              borderColor="border.muted"
+              scrollMarginTop="88px"
+            >
               <Heading size="sm" mb={4}>Anexos</Heading>
               <VStack align="stretch" gap={3} mb={canManageAttachments ? 6 : 0}>
                 {attachments.length === 0 ? (
@@ -267,14 +376,12 @@ const ReimbursementDetails = () => {
                   <Box bg="orange.50" borderWidth="1px" borderColor="orange.200" borderRadius="md" p={3}>
                     <Text fontSize="sm" color="fg.muted">
                       Valor acima de {formatCurrency(attachmentRuleThreshold)}: é obrigatório enviar pelo menos um
-                      comprovante (upload de arquivo) antes de enviar para aprovação. O limite é definido apenas no
-                      backend (`REIMBURSEMENT_REQUIRE_ATTACHMENT_ABOVE_VALUE`); esta tela usa o mesmo valor retornado
-                      por <Box as="code" fontSize="xs">GET /api/config/reimbursement-rules</Box>.
+                      comprovante (arquivo PDF, JPG ou PNG) antes de enviar para aprovação.
                     </Text>
                   </Box>
                 ) : null}
                 {canSubmit ? (
-                  <Button loading={submitMutation.isPending} onClick={() => submitMutation.mutate(reimbursement.id)}>
+                  <Button loading={submitMutation.isPending} onClick={handleSubmit}>
                     Enviar para Aprovação
                   </Button>
                 ) : null}
@@ -285,7 +392,7 @@ const ReimbursementDetails = () => {
                       flex="1"
                       gap={2}
                       loading={approveMutation.isPending}
-                      onClick={() => approveMutation.mutate(reimbursement.id)}
+                      onClick={handleApprove}
                     >
                       <CheckCircle size={16} />
                       Aprovar
@@ -302,12 +409,12 @@ const ReimbursementDetails = () => {
                   </HStack>
                 ) : null}
                 {canPay ? (
-                  <Button colorPalette="blue" loading={payMutation.isPending} onClick={() => payMutation.mutate(reimbursement.id)}>
+                  <Button colorPalette="blue" loading={payMutation.isPending} onClick={handlePay}>
                     Marcar como Pago
                   </Button>
                 ) : null}
                 {canCancel ? (
-                  <Button variant="outline" colorPalette="red" loading={cancelMutation.isPending} onClick={() => cancelMutation.mutate(reimbursement.id)}>
+                  <Button variant="outline" colorPalette="red" loading={cancelMutation.isPending} onClick={handleCancel}>
                     Cancelar Solicitação
                   </Button>
                 ) : null}
@@ -318,7 +425,7 @@ const ReimbursementDetails = () => {
 
         <GridItem>
           <Box bg="white" p={6} borderRadius="xl" boxShadow="sm" border="1px solid" borderColor="border.muted">
-            <Heading size="sm" mb={6}>Linha do Tempo</Heading>
+            <Heading size="sm" mb={6}>Linha do tempo</Heading>
 
             <VStack align="stretch" gap={6} position="relative">
               <Box position="absolute" left="11px" top="0" bottom="0" w="2px" bg="bg.muted" zIndex={0} />
@@ -328,11 +435,13 @@ const ReimbursementDetails = () => {
                     <CheckCircle size={12} color="white" />
                   </Box>
                   <Box>
-                    <Text fontWeight="bold" fontSize="sm">{entry.action}</Text>
+                    <Text fontWeight="bold" fontSize="sm">{historyActionLabel(entry.action)}</Text>
                     <Text fontSize="xs" color="fg.muted">
-                      {format(new Date(entry.createdAt), "dd MMM 'às' HH:mm", { locale: ptBR })}
+                      {format(new Date(entry.createdAt), "d 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                      {' · '}
+                      por {entry.user?.name ?? '—'}
                     </Text>
-                    <Text fontSize="xs" mt={1}>{entry.observation}</Text>
+                    <Text fontSize="xs" mt={1}>{formatHistoryObservation(entry.observation)}</Text>
                   </Box>
                 </HStack>
               ))}
@@ -394,6 +503,23 @@ const ReimbursementDetails = () => {
           </Box>
         </Box>
       ) : null}
+
+      <ActionFeedbackModal
+        open={workflowError.open}
+        title={workflowError.title}
+        description={workflowError.message}
+        tone={workflowError.tone}
+        primary={
+          workflowError.attachmentFlow
+            ? { label: 'Anexar comprovante', onClick: focusAttachmentsSection }
+            : { label: 'Entendi', onClick: closeWorkflowError }
+        }
+        secondary={
+          workflowError.attachmentFlow
+            ? { label: 'Fechar', onClick: closeWorkflowError }
+            : undefined
+        }
+      />
     </Box>
   );
 };

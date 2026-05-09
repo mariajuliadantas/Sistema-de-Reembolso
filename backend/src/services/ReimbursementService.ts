@@ -1,7 +1,6 @@
 import { prisma } from '../utils/prisma';
 import dayjs from 'dayjs';
 import { z } from 'zod';
-import type { Prisma } from '@prisma/client';
 import { createReimbursementSchema, updateReimbursementSchema, createAttachmentSchema } from '../schemas/reimbursementSchema';
 import type { ListReimbursementsQuery } from '../schemas/reimbursementListQuerySchema';
 import { AppError } from '../utils/AppError';
@@ -9,28 +8,13 @@ import {
   getAttachmentRequirementThreshold,
   hasUploadedReceiptEvidence,
 } from '../utils/reimbursementRules';
+import { assertExpenseDateNotFuture, assertValueWithinCategoryMax } from './reimbursement/reimbursementValidators';
+import {
+  buildReimbursementListBaseWhere,
+  buildReimbursementListOrderBy,
+} from './reimbursement/reimbursementListQuery';
 
 export class ReimbursementService {
-  private assertExpenseDateNotFuture(dateInput: string | Date) {
-    const expenseDay = dayjs(dateInput).startOf('day');
-    const today = dayjs().startOf('day');
-    if (expenseDay.isAfter(today)) {
-      throw new AppError('A data da despesa não pode ser no futuro', 400);
-    }
-  }
-
-  private assertValueWithinCategoryMax(
-    category: { maxAmount?: number | null; name: string },
-    value: number,
-  ) {
-    if (category.maxAmount != null && value > category.maxAmount) {
-      throw new AppError(
-        `O valor da solicitação (R$ ${value.toFixed(2)}) excede o limite da categoria "${category.name}" (máx. R$ ${category.maxAmount.toFixed(2)}).`,
-        400,
-      );
-    }
-  }
-
   async create(requesterId: string, data: z.infer<typeof createReimbursementSchema>) {
     const category = await prisma.category.findUnique({
       where: { id: data.categoryId },
@@ -40,8 +24,8 @@ export class ReimbursementService {
       throw new AppError('Categoria inválida ou inativa', 400);
     }
 
-    this.assertExpenseDateNotFuture(data.expenseDate);
-    this.assertValueWithinCategoryMax(category, data.value);
+    assertExpenseDateNotFuture(data.expenseDate);
+    assertValueWithinCategoryMax(category, data.value);
 
     const expenseDate = dayjs(data.expenseDate);
 
@@ -62,7 +46,7 @@ export class ReimbursementService {
           action: 'CREATED',
           reimbursementId: reimbursement.id,
           userId: requesterId,
-          observation: 'Reimbursement draft created',
+          observation: 'Rascunho da solicitação criado.',
         },
       });
 
@@ -97,11 +81,11 @@ export class ReimbursementService {
 
     const targetValue = data.value !== undefined ? data.value : reimbursement.value;
     if (categoryForLimit) {
-      this.assertValueWithinCategoryMax(categoryForLimit, targetValue);
+      assertValueWithinCategoryMax(categoryForLimit, targetValue);
     }
 
     if (data.expenseDate) {
-      this.assertExpenseDateNotFuture(data.expenseDate);
+      assertExpenseDateNotFuture(data.expenseDate);
     }
 
     return prisma.$transaction(async (tx) => {
@@ -120,7 +104,7 @@ export class ReimbursementService {
           action: 'UPDATED',
           reimbursementId: id,
           userId: user.id,
-          observation: 'Reimbursement details updated',
+          observation: 'Detalhes da solicitação atualizados.',
         },
       });
 
@@ -128,87 +112,10 @@ export class ReimbursementService {
     });
   }
 
-  private listOrderBy(filters: ListReimbursementsQuery): Prisma.ReimbursementOrderByWithRelationInput {
-    const dir = filters.sortOrder;
-    if (filters.sortBy === 'expenseDate') {
-      return { expenseDate: dir };
-    }
-    if (filters.sortBy === 'value') {
-      return { value: dir };
-    }
-    return { createdAt: dir };
-  }
-
-  private listExtraAnd(filters: ListReimbursementsQuery, options?: { omitStatus?: boolean }): Prisma.ReimbursementWhereInput[] {
-    const and: Prisma.ReimbursementWhereInput[] = [];
-    if (!options?.omitStatus && filters.status) {
-      and.push({ status: filters.status });
-    }
-    if (filters.categoryId) {
-      and.push({ categoryId: filters.categoryId });
-    }
-    if (filters.requesterSearch) {
-      and.push({
-        requester: {
-          OR: [
-            { name: { contains: filters.requesterSearch } },
-            { email: { contains: filters.requesterSearch } },
-          ],
-        },
-      });
-    }
-    return and;
-  }
-
-  private listBaseWhere(user: { id: string; role: string }, filters: ListReimbursementsQuery): Prisma.ReimbursementWhereInput {
-    if (user.role === 'COLLABORATOR') {
-      const extraAnd = this.listExtraAnd(filters);
-      return {
-        AND: [{ requesterId: user.id }, ...extraAnd],
-      };
-    }
-
-    if (user.role === 'MANAGER') {
-      const extraAnd = this.listExtraAnd(filters);
-      return {
-        AND: [
-          {
-            OR: [
-              { status: 'SUBMITTED' },
-              {
-                history: {
-                  some: {
-                    userId: user.id,
-                    action: { in: ['APPROVED', 'REJECTED'] },
-                  },
-                },
-              },
-            ],
-          },
-          ...extraAnd,
-        ],
-      };
-    }
-
-    if (user.role === 'FINANCIAL') {
-      const extraAnd = this.listExtraAnd(filters, { omitStatus: true });
-      return {
-        AND: [{ status: 'APPROVED' }, ...extraAnd],
-      };
-    }
-
-    if (user.role === 'ADMIN') {
-      const extraAnd = this.listExtraAnd(filters);
-      return extraAnd.length ? { AND: extraAnd } : {};
-    }
-
-    return { id: '__no-access__' };
-  }
-
   async getAll(user: { id: string; role: string }, filters: ListReimbursementsQuery) {
-    const orderBy = this.listOrderBy(filters);
+    const orderBy = buildReimbursementListOrderBy(filters);
     const requesterSelect = { select: { id: true, name: true, email: true } } as const;
-    const where = this.listBaseWhere(user, filters);
+    const where = buildReimbursementListBaseWhere(user, filters);
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
     const skip = (page - 1) * limit;
@@ -312,8 +219,8 @@ export class ReimbursementService {
       throw new AppError('Apenas reembolsos em DRAFT podem ser submetidos', 400);
     }
 
-    this.assertExpenseDateNotFuture(reimbursement.expenseDate);
-    this.assertValueWithinCategoryMax(reimbursement.category, reimbursement.value);
+    assertExpenseDateNotFuture(reimbursement.expenseDate);
+    assertValueWithinCategoryMax(reimbursement.category, reimbursement.value);
 
     const attachmentThreshold = getAttachmentRequirementThreshold();
     if (
@@ -333,7 +240,7 @@ export class ReimbursementService {
         data: { status: 'SUBMITTED' }
       });
       await tx.reimbursementHistory.create({
-        data: { action: 'SUBMITTED', reimbursementId: id, userId: user.id, observation: 'Reimbursement submitted for approval' }
+        data: { action: 'SUBMITTED', reimbursementId: id, userId: user.id, observation: 'Solicitação enviada para análise.' }
       });
       return updated;
     });
@@ -344,7 +251,7 @@ export class ReimbursementService {
       throw new AppError('Acesso negado: apenas MANAGER pode aprovar reembolsos', 403);
     }
     const reimbursement = await this.findById(id, user);
-    
+
     if (reimbursement.status !== 'SUBMITTED') {
       throw new AppError('Apenas reembolsos em SUBMITTED podem ser aprovados', 400);
     }
@@ -355,7 +262,7 @@ export class ReimbursementService {
         data: { status: 'APPROVED' }
       });
       await tx.reimbursementHistory.create({
-        data: { action: 'APPROVED', reimbursementId: id, userId: user.id, observation: 'Reimbursement approved' }
+        data: { action: 'APPROVED', reimbursementId: id, userId: user.id, observation: 'Solicitação aprovada.' }
       });
       return updated;
     });
@@ -382,7 +289,7 @@ export class ReimbursementService {
           action: 'REJECTED',
           reimbursementId: id,
           userId: user.id,
-          observation: `Rejected: ${reason}`,
+          observation: `Motivo da rejeição: ${reason}`,
         },
       });
       return updated;
@@ -394,7 +301,7 @@ export class ReimbursementService {
       throw new AppError('Acesso negado: apenas FINANCIAL pode pagar reembolsos', 403);
     }
     const reimbursement = await this.findById(id, user);
-    
+
     if (reimbursement.status !== 'APPROVED') {
       throw new AppError('Apenas reembolsos APPROVED podem ser pagos', 400);
     }
@@ -405,7 +312,7 @@ export class ReimbursementService {
         data: { status: 'PAID' }
       });
       await tx.reimbursementHistory.create({
-        data: { action: 'PAID', reimbursementId: id, userId: user.id, observation: 'Reimbursement paid' }
+        data: { action: 'PAID', reimbursementId: id, userId: user.id, observation: 'Pagamento registrado.' }
       });
       return updated;
     });
@@ -430,7 +337,7 @@ export class ReimbursementService {
         data: { status: 'CANCELLED' } // No schema está CANCELLED
       });
       await tx.reimbursementHistory.create({
-        data: { action: 'CANCELED', reimbursementId: id, userId: user.id, observation: 'Reimbursement canceled' }
+        data: { action: 'CANCELED', reimbursementId: id, userId: user.id, observation: 'Solicitação cancelada.' }
       });
       return updated;
     });
@@ -462,7 +369,7 @@ export class ReimbursementService {
           action: 'UPDATED',
           reimbursementId: id,
           userId: user.id,
-          observation: `Attachment added: ${data.fileName}`,
+          observation: `Anexo adicionado: ${data.fileName}`,
         },
       });
 

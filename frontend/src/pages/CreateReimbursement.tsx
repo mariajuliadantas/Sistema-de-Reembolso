@@ -13,8 +13,13 @@ const CreateReimbursement = () => {
           <ArrowLeft size={18} />
         </Button>
         <Box>
-          <Heading size="lg" letterSpacing="tight">Nova Solicitação</Heading>
-          <Text color="fg.muted">Preencha os dados abaixo para solicitar seu reembolso.</Text>
+          <Heading size="lg" letterSpacing="tight">
+            Nova Solicitação
+          </Heading>
+          <Text color="fg.muted">
+            Preencha os dados e, se quiser, selecione comprovantes antes de criar — eles serão enviados junto com o
+            rascunho.
+          </Text>
         </Box>
       </Flex>
 
@@ -26,7 +31,7 @@ const CreateReimbursement = () => {
         border="1px solid"
         borderColor="border.muted"
       >
-        <ReimbursementForm />
+        <ReimbursementForm stageAttachmentsWithCreate />
       </Box>
     </Box>
   );

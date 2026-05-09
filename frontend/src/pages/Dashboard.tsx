@@ -9,6 +9,10 @@ import { ptBR } from 'date-fns/locale';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { formatCurrency } from '../lib/reimbursement';
+import { toaster } from '../lib/toaster';
+import { getApiErrorMessage } from '../lib/apiError';
+import { isAttachmentPolicyMessage } from '../lib/reimbursementSubmitGuards';
+import { ActionFeedbackModal } from '../components/shared/ActionFeedbackModal';
 import { useCategories } from '../hooks/useCategories';
 import type { ReimbursementStatus } from '../types/reimbursement';
 
@@ -40,6 +44,16 @@ const Dashboard = () => {
   const pageParam = Number(searchParams.get('page') || '1');
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const [requesterInput, setRequesterInput] = useState(requesterSearch);
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone: 'danger' | 'warning';
+    reimbursementId?: string;
+    attachmentFlow?: boolean;
+  }>({ open: false, title: '', message: '', tone: 'danger' });
+
+  const closeErrorDialog = () => setErrorDialog((s) => ({ ...s, open: false }));
 
   const apiSortBy = sortBy.startsWith('VALUE') ? 'value' : 'expenseDate';
   const apiSortOrder = sortBy.endsWith('ASC') ? 'asc' : 'desc';
@@ -58,6 +72,52 @@ const Dashboard = () => {
   const totals = reimbursementsResponse?.totals;
   const submitMutation = useSubmitReimbursement();
   const cancelMutation = useCancelReimbursement();
+
+  const handleSubmitRow = useCallback(
+    async (reimbursementId: string) => {
+      try {
+        await submitMutation.mutateAsync(reimbursementId);
+        toaster.success({
+          title: 'Solicitação enviada',
+          description: 'A solicitação foi enviada para análise do gestor.',
+        });
+      } catch (err) {
+        const message = getApiErrorMessage(err, 'Verifique os dados e tente novamente.');
+        const attachmentFlow = isAttachmentPolicyMessage(message);
+        setErrorDialog({
+          open: true,
+          title: attachmentFlow ? 'Comprovante obrigatório' : 'Não foi possível enviar',
+          message,
+          tone: attachmentFlow ? 'warning' : 'danger',
+          reimbursementId: attachmentFlow ? reimbursementId : undefined,
+          attachmentFlow,
+        });
+      }
+    },
+    [submitMutation, setErrorDialog],
+  );
+
+  const handleCancelRow = useCallback(
+    async (reimbursementId: string) => {
+      try {
+        await cancelMutation.mutateAsync(reimbursementId);
+        toaster.success({
+          title: 'Solicitação cancelada',
+          description: 'O rascunho foi cancelado com sucesso.',
+        });
+      } catch (err) {
+        const message = getApiErrorMessage(err, 'Tente novamente.');
+        setErrorDialog({
+          open: true,
+          title: 'Não foi possível cancelar',
+          message,
+          tone: 'danger',
+          attachmentFlow: false,
+        });
+      }
+    },
+    [cancelMutation, setErrorDialog],
+  );
 
   const updateQueryParam = useCallback((key: string, value: string, options?: { resetPage?: boolean }) => {
     setSearchParams((prev) => {
@@ -271,7 +331,7 @@ const Dashboard = () => {
                           variant="outline"
                           size="sm"
                           loading={submitMutation.isPending}
-                          onClick={() => submitMutation.mutate(item.id)}
+                          onClick={() => handleSubmitRow(item.id)}
                         >
                           Enviar
                         </Button>
@@ -282,7 +342,7 @@ const Dashboard = () => {
                           size="sm"
                           colorPalette="red"
                           loading={cancelMutation.isPending}
-                          onClick={() => cancelMutation.mutate(item.id)}
+                          onClick={() => handleCancelRow(item.id)}
                         >
                           Cancelar
                         </Button>
@@ -356,6 +416,32 @@ const Dashboard = () => {
           </HStack>
         </Flex>
       ) : null}
+
+      <ActionFeedbackModal
+        open={errorDialog.open}
+        title={errorDialog.title}
+        description={errorDialog.message}
+        tone={errorDialog.tone}
+        primary={
+          errorDialog.attachmentFlow && errorDialog.reimbursementId
+            ? {
+                label: 'Anexar comprovante',
+                onClick: () => {
+                  closeErrorDialog();
+                  navigate(`/reimbursements/${errorDialog.reimbursementId}`);
+                },
+              }
+            : { label: 'Entendi', onClick: closeErrorDialog }
+        }
+        secondary={
+          errorDialog.attachmentFlow
+            ? {
+                label: 'Voltar ao painel',
+                onClick: closeErrorDialog,
+              }
+            : undefined
+        }
+      />
     </Box>
   );
 };

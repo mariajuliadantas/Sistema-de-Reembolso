@@ -8,7 +8,6 @@ import authRoutes from './routes/auth.routes';
 import categoryRoutes from './routes/category.routes';
 import reimbursementRoutes from './routes/reimbursement.routes';
 import userRoutes from './routes/user.routes';
-import demoRoutes from './routes/demo.routes';
 import configRoutes from './routes/config.routes';
 import { authMiddleware, roleMiddleware } from './middlewares/auth.middleware';
 import { sendError } from './utils/httpResponse';
@@ -29,7 +28,6 @@ app.get('/', (req: Request, res: Response) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/config', configRoutes);
-app.use('/api/demo', demoRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/reimbursements', reimbursementRoutes);
@@ -54,7 +52,7 @@ app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
 
   if (err instanceof Error) {
     console.error(err.stack);
-    // Erros comuns do fileFilter do multer
+   
     if (err.message.startsWith('Tipo de arquivo inválido')) {
       return sendError(res, 400, err.message);
     }

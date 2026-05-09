@@ -73,11 +73,20 @@ api.interceptors.response.use(
     const originalRequest = error.config as RetryableConfig | undefined;
     const url = originalRequest?.url;
 
+    // 401 na repetição após refresh (ou token ainda recusado): encerra sessão na UI
+    if (status === 401 && originalRequest?._retry) {
+      clearStoredSession();
+      window.dispatchEvent(new CustomEvent('auth:session-expired'));
+      return Promise.reject(error);
+    }
+
     if (status !== 401 || !originalRequest || originalRequest._retry || !shouldAttemptRefreshForUrl(url)) {
       return Promise.reject(error);
     }
 
     if (!localStorage.getItem('@App:refreshToken')) {
+      clearStoredSession();
+      window.dispatchEvent(new CustomEvent('auth:session-expired'));
       return Promise.reject(error);
     }
 

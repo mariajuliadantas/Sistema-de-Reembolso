@@ -217,6 +217,9 @@ export const useAddReimbursementAttachment = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['reimbursement', variables.id, 'attachments'] });
       queryClient.invalidateQueries({ queryKey: ['reimbursement', variables.id] });
+      queryClient.invalidateQueries({
+        predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'reimbursements',
+      });
     },
   });
 };

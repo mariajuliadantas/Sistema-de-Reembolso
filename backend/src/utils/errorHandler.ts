@@ -13,7 +13,8 @@ export function handleHttpError(error: unknown, res: Response) {
   }
 
   if (error instanceof Error) {
-    return sendError(res, 400, error.message);
+    console.error('Erro não tratado (AppError/Zod esperados devem ser usados para respostas 4xx):', error);
+    return sendError(res, 500, 'Erro interno do servidor');
   }
 
   console.error('Unhandled error type:', error);
